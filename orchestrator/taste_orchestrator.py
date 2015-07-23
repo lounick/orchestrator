@@ -1538,7 +1538,7 @@ def CreateDataViews(i_aadlFile, asn1Grammar, acnFile, baseASN, md5s, md5hashesFi
         oldBaseACN = os.path.basename(acnFile)
         if os.path.exists(oldBaseACN):
             os.unlink(oldBaseACN)
-        mysystem("mono \"$DMT\"/asn1scc/asn1.exe -ACND \""+baseASN+"\"")
+        mysystem("mono \"$ASN1SCC\" -ACND \""+baseASN+"\"")
         acnFile = os.path.abspath(baseASN.replace(".asn", ".acn"))
 
     # Now create the full (non-cropped) ASN.1 grammar, since the DataView AADL we will create below must include ALL types
@@ -1773,7 +1773,7 @@ def DetectAdaPackages(adaSubsystems, asn1Grammar):
         g_stageLog.info("Detecting Ada Packages")
     uniqueSetOfAdaPackages = {"adaasn1rtl": 1}
     if adaSubsystems:
-        for l in os.popen("mono \"$DMT\"/asn1scc/asn1.exe -AdaUses \"%s\"" % asn1Grammar).readlines():
+        for l in os.popen("mono \"$ASN1SCC\" -AdaUses \"%s\"" % asn1Grammar).readlines():
             uniqueSetOfAdaPackages[l.split(':')[1].rstrip().lower()]=1
     return uniqueSetOfAdaPackages
 
