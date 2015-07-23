@@ -1242,6 +1242,8 @@ def FixEnvVars():
     '''Updates required environment variables'''
     # DMT tarball is now obsolete - we will use the repos-provided
     # versions of the DMT tools
+    global g_currentStage
+    g_currentStage = "Initialization"
     DMTpath = getSingleLineFromCmdOutput("taste-config --prefix") + os.sep + "share"
     os.putenv("DMT", DMTpath)
 
@@ -1270,18 +1272,21 @@ def FixEnvVars():
     os.putenv("GEODE_NBPAR_PROC", "0")
 
 
-def ParseCommandLineArgs():
-    '''Parses options passed in the command line'''
+def setLogger():
+    ''' Initialize the logging function '''
+    global g_stageLog
     disableColor = "--nocolor" in sys.argv
     if disableColor:
         sys.argv.remove("--nocolor")
-    global g_stageLog
     g_stageLog = logging.getLogger("tasteBuilder")
     console = logging.StreamHandler(sys.__stdout__)
     console.setFormatter(ColorFormatter(sys.stdin.isatty() and not disableColor))
     g_stageLog.setLevel(logging.INFO)
     g_stageLog.addHandler(console)
 
+
+def ParseCommandLineArgs():
+    '''Parses options passed in the command line'''
     g_stageLog.info("Parsing Command Line Args")
     try:
         args = sys.argv[1:]
@@ -2244,6 +2249,7 @@ def ApplyPatchForDeploymentViewNeededByOcarinaForNewEllidissTools(depl_aadlFile)
 
 
 def main():
+    setLogger()
     FixEnvVars()
     cmdLineInformation = ParseCommandLineArgs()
     outputDir, i_aadlFile, depl_aadlFile, \
