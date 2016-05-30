@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 #
 # (C) Semantix Information Technologies.
-# 
-# Copyright 2014-2015 IB Krates <info@krates.ee>
-#       QGenc code generator integration
 #
 # Semantix Information Technologies is licensing the code of the
 # Data Modelling Tools (DMT) in the following dual-license mode:
@@ -13,17 +10,17 @@
 # to use for the development of proprietary and/or commercial software.
 # This version is for developers/companies who do not want to share
 # the source code they develop with others or otherwise comply with the
-# terms of the GNU Lesser General Public License version 3
+# terms of the GNU General Public License version 2.1.
 #
-# GNU LGPL v.3
+# GNU GPL v. 2.1:
 #       This version of DMT is the one to use for the development of
 # non-commercial applications, when you are willing to comply
-# with the terms of the GNU Lesser General Public License version 3
+# with the terms of the GNU General Public License version 2.1.
 #
 # The features of the two licenses are summarized below:
 #
 #                       Commercial
-#                       Developer               LGPL
+#                       Developer               GPL
 #                       License
 #
 # License cost          License fee charged     No license fee
@@ -33,7 +30,7 @@
 #                       be closed               must be provided back
 #
 # Can create            Yes, That is,           No, applications are subject
-# proprietary           no source code needs    to the LGPL and all source code
+# proprietary           no source code needs    to the GPL and all source code
 # applications          to be disclosed         must be made available
 #
 # Support               Yes, 12 months of       No, but available separately
@@ -55,8 +52,6 @@ import time
 import glob
 import logging
 import multiprocessing
-
-__version__ = "1.0.0"
 
 # File handle where build log (log.txt) is
 g_log = None
@@ -218,7 +213,7 @@ def banner(msg):
 
 def usage():
     '''Shows all available cmd line arguments'''
-    panic("TASTE Orchestrator\n"
+    panic("TASTE/ASSERT orchestrator, revision: $Rev: 7811 $\n"
           "Usage: " + os.path.basename(sys.argv[0]) + " <options>\nWhere <options> are:\n\n"
           "-f, --fast\n\tSkip waiting for ENTER between stages\n\n"
           "-g, --debug\n\tEnable debuging options\n\n"
@@ -629,7 +624,12 @@ def BuildObjectGeodeSystems(ogSubsystems, CDirectories, cflagsSoFar):
         # This is for ObjectGeode code
         os.chdir(baseDir + os.sep + "ext")
         CheckDirectives(baseDir)
+        #mysystem("cp \"$DMT\"/asn2aadlPlus/privateHeap/malloc.c .")
+        #mysystem("cp \"$DMT\"/asn2aadlPlus/privateHeap/staticMoreCore.[ch] .")
+        #mysystem("for i in ../../auto-src/*.h ; do ln -s \"$i\" ; done")
+        #mysystem("ln -s \"../../GlueAndBuild/%s\"" % TheInitializationOfTheHeapSourceFile)
         mysystem("if [ ! -f \"$WORKDIR/GlueAndBuild/glue%s/OG_ASN1_Types.h\" ] ; then touch \"$WORKDIR/GlueAndBuild/glue%s/OG_ASN1_Types.h\" ; fi" % (ss, ss))
+        #mysystem("if [ -f vm_callback.c ] ; then mv vm_callback.c vm_callback.c.disabled ; fi")
         mysystem("cp ../*polyorb_interface.? . 2>/dev/null || exit 0")
         mysystem("cp ../Context-*.? . 2>/dev/null || exit 0")
         mysystem("rm -f ../*-uniq.? *-uniq.? 2>/dev/null || exit 0")
@@ -698,7 +698,7 @@ def BuildVHDLsystems_C_code(vhdlSubsystems, CDirectories, cflagsSoFar):
 
 
 def BuildGUIs(guiSubsystems, cflagsSoFar, asn1Grammar):
-    '''Builds automatically generated GUIs'''
+    '''Builds automatically generated wxWdigets GUIs'''
     if guiSubsystems:
         g_stageLog.info("Building automatically created GUIs")
     commentedGUIfilters = []
@@ -741,11 +741,63 @@ def BuildGUIs(guiSubsystems, cflagsSoFar, asn1Grammar):
         mysystem("cp \"$DMT\"/AutoGUI/* .")
         mysystem("cat Makefile | sed 's,DataView,%s,g' > a_temp_name && mv a_temp_name Makefile" % os.path.splitext(os.path.basename(asn1Grammar))[0])
         mysystem("cat Makefile | sed 's,applicationName,%s,g' > a_temp_name && mv a_temp_name Makefile" % (baseDir+"_GUI"))
+#        mysystem("cp -u ../../GlueAndBuild/glue" + baseDir + "/My* .")
+#        mysystem("cp -u ../../GlueAndBuild/glue" + baseDir + "/telecmds.* .")
         mysystem("cp -u ../../GlueAndBuild/glue" + baseDir + "/C_*.[ch] .")
+        #mysystem("cp ../auto-src/* .")
         if baseDir.endswith('probe_console'):
             os.chdir("../..")
             continue
-
+#        g_stageLog.info("Creating GUI: " + baseDir)
+#        mysystem("make")
+#
+#        # Generation of Gnuplot support scripts
+#        gnuplotMeasurements = "../../GlueAndBuild/glue" + baseDir + os.sep + "gnuplot"
+#        if os.path.exists(gnuplotMeasurements) and 0 != len(open(gnuplotMeasurements, 'r').readlines()):
+#            outputIndex = 0
+#            lines = []
+#            gnuplotScript = open("../../" + baseDir + ".pl", "w")
+#            gnuplotScript.write('''#!/usr/bin/perl -w
+#use strict;
+#
+#select((select(STDOUT), $| = 1)[0]);
+#
+#open DATA, "../%s_GUI |";
+#
+#while(<DATA>) {
+#''' % baseDir)
+#            for line in open("../../GlueAndBuild/glue" + baseDir + os.sep + "gnuplot").readlines():
+#                lines.append(line.strip())
+#                commentMe = "# " if outputIndex>4 else ""
+#                gnuplotScript.write('''%s    if (/^%s\D+([\d\.]+)/) {
+#%s        print "%d:$1\\n";
+#%s    }
+#''' % (commentMe, line.strip().replace("::", ".*").replace("_", "[_-]"), commentMe, outputIndex, commentMe))
+#                outputIndex = outputIndex + 1
+#            if outputIndex>5:
+#                commentedGUIfilters.append(baseDir+".pl")
+#            gnuplotScript.write('''
+#}
+#close DATA;
+#''')
+#            gnuplotScript.close()
+#            mysystem("chmod +x ../../" + baseDir + ".pl")
+#            gnuplot_gui = open("../../" + baseDir + "_RunAndPlot.sh", "w")
+#            gnuplot_gui.write("#!/bin/bash\n\n")
+#            gnuplot_gui.write("./%s.pl | taste-gnuplot-streams %d " % (baseDir, outputIndex))
+#            if outputIndex>0:
+#                for i in range(0, outputIndex):
+#                    # number of sample for each window
+#                    gnuplot_gui.write("50 ")
+#                for line in lines:
+#                    # label of each window
+#                    gnuplot_gui.write('\'' + line + "\' ")
+#                for i in range(0, outputIndex):
+#                    # size and position of each window (len x wid + posX + posY)
+#                    gnuplot_gui.write("336x256+%d+0 " % (i * 360))
+#            gnuplot_gui.write("\n")
+#            gnuplot_gui.close()
+#            mysystem("chmod +x ../../" + baseDir + "_RunAndPlot.sh")
         os.chdir("../..")
     return commentedGUIfilters
 
@@ -845,7 +897,7 @@ def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, cSubsystems,
 
     for prefix, systemPlatform in prefixes.items():
         renamingDirs = 0
-        cmd = "taste-patch-aplc "
+        cmd = "patchAPLCs.py "
         for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + \
                 adaSubsystems.keys() + rtdsSubsystems.keys() + ogSubsystems.keys() + \
                 guiSubsystems + cyclicSubsystems + vhdlSubsystems.keys():
@@ -886,6 +938,9 @@ def InvokeOcarinaMakefiles(
                 line = line.strip()
                 if line.startswith("#  Node name"):
                     node = line[34:]
+            if node == "":
+                # Handle LaTEX-doxygen related Makefiles (closes: #488)
+                continue
             if node not in g_distributionNodes:
                 panic("There is no '%s' node in the distribution nodes generated by buildsupport." % node)
 
@@ -895,6 +950,10 @@ def InvokeOcarinaMakefiles(
             externals = ""
             userCFlags = "-g " if bDebug else ""
             userLDFlags = "-g " if bDebug else ""
+
+            # VCD support
+            if bDebug and g_bPolyORB_HI_C:
+                userCFlags += "-D__PO_HI_USE_VCD=1 "
 
             # Profiling: Either the global "--gprof" has been used,
             # or the node-specific "-n nodeName@gprof=on" has been used.
@@ -961,12 +1020,12 @@ def InvokeOcarinaMakefiles(
                 TasteAda.close()
                 #open("conf.ec",'w').write("pragma No_Run_Time;\n")
                 #mysystem("gnatmake -c -I../../auto-src " + baseDir + " " + x + " -gnatec=conf.ec")
-                mysystem("\"$GNATMAKE\" -c %s -I. tasteada.ads" % mflags(node))
+                mysystem("\"$GNATMAKE\" -c %s -I.  -gnat2012 tasteada.ads" % mflags(node))
                 if not os.path.exists("tasteada.ali"):
                     panic("WARNING: No tasteada.ali file was generated")
                 mysystem("\"$GNATBIND\" -t -n tasteada.ali -o ada-start.adb")
                 dbg = "-g" if bDebug else ""
-                mysystem("\"$GNATMAKE\" -c %s %s ada-start.adb" % (dbg, mflags(node)))
+                mysystem("\"$GNATMAKE\" -c %s %s -gnat2012 ada-start.adb" % (dbg, mflags(node)))
                 for line in open("ada-start.adb").readlines():
                     if -1 != line.find("adalib"):
                         poHiAdaLinkCmd = line.strip().replace ("--", "")
@@ -1143,11 +1202,11 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, tmpDirName, co
     outputDir = g_absOutputDir
     os.chdir(outputDir)
     mkdirIfMissing(outputDir + os.sep + "/binaries")
-    mysystem("find '%s'/GlueAndBuild -type f -perm +111 ! -iname '*.so' -a ! -iname '*.pyd' | while read ANS ; do file \"$ANS\" | egrep 'ELF|PE32' >/dev/null 2>/dev/null && mv \"$ANS\" \"%s/binaries/\" ; done ; exit 0" % (g_absOutputDir, g_absOutputDir))
-    mysystem("find '%s'/ -name binaries -prune -o -type f -perm +111 -iname '*_GUI' -exec sh -c 'F=\"{}\"; D=$(dirname \"$F\"); B=$(basename \"$F\") ; B=\"${B/_GUI/}\"; mv \"$F\" \"%s/binaries/\" ; mv \"$D\"/../../../${B}.pl \"%s/binaries/\" ; mv \"$D\"/../../../${B}_RunAndPlot.sh \"%s/binaries/\" ; ' ';' 2>/dev/null" % (g_absOutputDir, g_absOutputDir, g_absOutputDir, g_absOutputDir))
+    mysystem("find '%s'/GlueAndBuild -type f -perm /111 ! -iname '*.so' -a ! -iname '*.pyd' | while read ANS ; do file \"$ANS\" | egrep 'ELF|PE32' >/dev/null 2>/dev/null && mv \"$ANS\" \"%s/binaries/\" ; done ; exit 0" % (g_absOutputDir, g_absOutputDir))
+    mysystem("find '%s'/ -name binaries -prune -o -type f -perm /111 -iname '*_GUI' -exec sh -c 'F=\"{}\"; D=$(dirname \"$F\"); B=$(basename \"$F\") ; B=\"${B/_GUI/}\"; mv \"$F\" \"%s/binaries/\" ; mv \"$D\"/../../../${B}.pl \"%s/binaries/\" ; mv \"$D\"/../../../${B}_RunAndPlot.sh \"%s/binaries/\" ; ' ';' 2>/dev/null" % (g_absOutputDir, g_absOutputDir, g_absOutputDir, g_absOutputDir))
     if len(pythonSubsystems)>0:
         g_stageLog.info("Python bridges built under %s:" % outputDir)
-        for line in os.popen("find '%s' -type f -iname _PythonAccess.so -perm +111" % (g_absOutputDir)).readlines():
+        for line in os.popen("find '%s' -type f -iname _PythonAccess.so -perm /111" % (g_absOutputDir)).readlines():
             g_stageLog.info("        Shared library: " + line.strip())
 
     # Strip binaries:
@@ -1158,7 +1217,7 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, tmpDirName, co
                 mysystem("%sstrip %s" % (pref, outputDir + os.sep + "/binaries" + os.sep + n))
     if bDebug:
         g_stageLog.info("Built with debug info: you can check the stack usage of the binaries")
-        g_stageLog.info("with 'taste-check-stack-usage', to make sure you are within limits.")
+        g_stageLog.info("with 'checkStackUsage.py', to make sure you are within limits.")
     # ticket 224: Keep gnuplot stuff separate
     olddir = os.getcwd()
     os.chdir(outputDir + os.sep + "/binaries/")
@@ -1180,7 +1239,7 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, tmpDirName, co
         installPath = getSingleLineFromCmdOutput("taste-config --prefix")
         mysystem('cp "%s"/bin/taste-gnuplot-streams ./driveGnuPlotsStreams.pl' % installPath)
         mysystem('for i in peekpoke.py PeekPoke.glade ; do cp "%s"/share/peekpoke/$i . ; done' % installPath)
-        mysystem('echo Untaring pyinstaller.speedometer.tar.bz2... ; tar jxf "%s"/share/speedometer/pyinstaller.speedometer.tar.bz2' % installPath)
+        #mysystem('echo Untaring pyinstaller.speedometer.tar.bz2... ; tar jxf "%s"/share/speedometer/pyinstaller.speedometer.tar.bz2' % installPath)
         g_stageLog.info("A PeekPoke subfolder was also created under binaries")
         g_stageLog.info("for easy run-time monitoring and control of inner variables.")
         break
@@ -1190,7 +1249,7 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, tmpDirName, co
 
     g_stageLog.info("Executables built under %s/binaries:" % outputDir)
     for line in os.popen(
-            "find '%s'/binaries -type f -perm +111 | grep -v /PeekPoke/ ; exit 0" % (g_absOutputDir)).readlines():
+            "find '%s'/binaries -type f -perm /111 | grep -v /PeekPoke/ ; exit 0" % (g_absOutputDir)).readlines():
         line = line.strip()
         if line.endswith('.so'):
             continue
@@ -1222,7 +1281,7 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, tmpDirName, co
             mysystem('cp "%(glue)s/"*.py "%(target)s"' % stubs)
             mysystem('cp "%(glue)s/guilayout.ui" "%(target)s"' % stubs)
             mysystem('cp "%(glue)s/python/"*.py "%(target)s"' % stubs)
-            mysystem('echo "errCodes = $($(taste-config --prefix)/share/asn1-editor/taste-asn1-errCodes %(glue)s/python/dataview-uniq.h)" >> "%(target)s/datamodel.py"' % stubs)
+            mysystem('echo "errCodes = $($(taste-config --prefix)/share/asn1-editor/errCode.py %(glue)s/python/dataview-uniq.h)" >> "%(target)s/datamodel.py"' % stubs)
             mysystem('cp "%(glue)s/python/"*.so "%(target)s"' % stubs)
             mysystem('cp "%(glue)s/python/asn2dataModel/"*.pyd "%(target)s" 2>/dev/null || exit 0' % stubs)
             mysystem('cp "%(glue)s/python/asn2dataModel/"*.so "%(target)s" 2>/dev/null || exit 0' % stubs)
@@ -1234,16 +1293,30 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, tmpDirName, co
             mysystem('cp "%(IFview)s" "%(target)s"/InterfaceView.aadl' % stubs)
             mysystem('cp "%(DView)s" "%(target)s"/' % stubs)
 
-        for line in os.popen("find '%s'/binaries/ -maxdepth 1 -type f -perm +111 -iname 'GUI*' ; exit 0" % (g_absOutputDir)):
+#        os.chdir(outputDir)
+#        mysystem("mkdir -p binaries/bb_device")
+#        mysystem("cp bb_device/interface_enum.h binaries/bb_device/")
+#        mysystem("cp $(taste-config --prefix)/share/asn1-editor/InterfaceEnum.i binaries/bb_device/")
+#        mysystem('''\
+#cd binaries/bb_device && \
+#swig -includeall -outdir . -python ./InterfaceEnum.i && \
+#gcc -g -shared -fPIC  `python-config --includes` -o _InterfaceEnum.so InterfaceEnum_wrap.c && \
+#cp _InterfaceEnum.so ../testgui-GUI''')
+
+        for line in os.popen("find '%s'/binaries/ -maxdepth 1 -type f -perm /111 -iname 'GUI*' ; exit 0" % (g_absOutputDir)):
             g_stageLog.info("        Python GUI: " + line.strip())
+
+
+def CopyDatabaseFolderIfExisting():
+    if os.path.isdir(g_absOutputDir + "/../sql_db"):
+        for line in os.popen("find '%s'/binaries/ -maxdepth 1 -type d -iname '*GUI' ; exit 0" % (g_absOutputDir)):
+            mysystem("cp -al \"%s\" \"%s\"" % (g_absOutputDir + "/../sql_db/", line.strip()))
 
 
 def FixEnvVars():
     '''Updates required environment variables'''
     # DMT tarball is now obsolete - we will use the repos-provided
     # versions of the DMT tools
-    global g_currentStage
-    g_currentStage = "Initialization"
     DMTpath = getSingleLineFromCmdOutput("taste-config --prefix") + os.sep + "share"
     os.putenv("DMT", DMTpath)
 
@@ -1272,25 +1345,22 @@ def FixEnvVars():
     os.putenv("GEODE_NBPAR_PROC", "0")
 
 
-def setLogger():
-    ''' Initialize the logging function '''
-    global g_stageLog
+def ParseCommandLineArgs():
+    '''Parses options passed in the command line'''
     disableColor = "--nocolor" in sys.argv
     if disableColor:
         sys.argv.remove("--nocolor")
+    global g_stageLog
     g_stageLog = logging.getLogger("tasteBuilder")
     console = logging.StreamHandler(sys.__stdout__)
     console.setFormatter(ColorFormatter(sys.stdin.isatty() and not disableColor))
     g_stageLog.setLevel(logging.INFO)
     g_stageLog.addHandler(console)
 
-
-def ParseCommandLineArgs():
-    '''Parses options passed in the command line'''
     g_stageLog.info("Parsing Command Line Args")
     try:
         args = sys.argv[1:]
-        optlist, args = getopt.gnu_getopt(args, "fgpbrvhjn:o:s:c:i:S:M:C:B:A:G:P:V:QC:QA:e:d:l:w:", ['fast', 'debug', 'no-retry', 'with-polyorb-hi-c', 'with-empty-init', 'with-coverage', 'aadlv2', 'gprof', 'keep-case', 'nodeOptions=', 'output=', 'stack=', 'deploymentView=', 'interfaceView=', 'subSCADE=', 'subSIMULINK=', 'subC=', 'subCPP=', 'subAda=', 'subOG=', 'subRTDS=', 'subVHDL=', 'subQGenC=', 'subQGenAda=', 'with-extra-C-code=', 'with-extra-Ada-code=', 'with-extra-lib=', 'with-cv-attributes'])
+        optlist, args = getopt.gnu_getopt(args, "fgpbrvhjn:o:s:c:i:S:M:C:B:A:G:P:V:e:d:l:w:", ['fast', 'debug', 'no-retry', 'with-polyorb-hi-c', 'with-empty-init', 'with-coverage', 'aadlv2', 'gprof', 'keep-case', 'nodeOptions=', 'output=', 'stack=', 'deploymentView=', 'interfaceView=', 'subSCADE=', 'subSIMULINK=', 'subC=', 'subCPP=', 'subAda=', 'subOG=', 'subRTDS=', 'subVHDL=', 'with-extra-C-code=', 'with-extra-Ada-code=', 'with-extra-lib=', 'with-cv-attributes'])
     except:
         usage()
     if args != []:
@@ -1390,11 +1460,6 @@ def ParseCommandLineArgs():
             if len(arg.split(':')) <= 1:
                 panic('SIMULINK subsystems must be specified in the form subsysAadlName:zipFile')
             simulinkSubsystems[simulinkSubName] = arg.split(':')[1]
-        elif opt in ("-QC", "--subQGenC"):
-            simulinkSubName = arg.split(':')[0]
-            if len(arg.split(':')) <= 1:
-                panic('QGenC subsystems must be specified in the form subsysAadlName:zipFile')
-            simulinkSubsystems[simulinkSubName] = arg.split(':')[1]
         elif opt in ("-C", "--subC"):
             cSubName = arg.split(':')[0]
             if len(arg.split(':')) <= 1:
@@ -1409,11 +1474,6 @@ def ParseCommandLineArgs():
             adaSubName = arg.split(':')[0]
             if len(arg.split(':')) <= 1:
                 panic('Ada subsystems must be specified in the form subsysAadlName:zipFile')
-            adaSubsystems[adaSubName] = arg.split(':')[1]
-        elif opt in ("-QA", "--subQGenAda"):
-            adaSubName = arg.split(':')[0]
-            if len(arg.split(':')) <= 1:
-                panic('QGenAda subsystems must be specified in the form subsysAadlName:zipFile')
             adaSubsystems[adaSubName] = arg.split(':')[1]
         elif opt in ("-G", "--subOG"):
             ogSubName = arg.split(':')[0]
@@ -1480,6 +1540,10 @@ disable this check with the -z command line argument or by setting
     # Initial log entry
     mysystem("date", outputDir=g_absOutputDir)
 
+    # Removed check for bash, 2011/Apr/8 : all bashisms are gone now (I think)
+    #banner("Checking for valid shell")
+    #mysystem("/bin/sh --version 2>/dev/null | grep bash >/dev/null || { echo Your /bin/sh is not bash ... aborting... ; exit 1 ; }")
+
     filesMustExist = [depl_aadlFile, i_aadlFile]
     if cvAttributesFile != "":
         filesMustExist.append(cvAttributesFile)
@@ -1487,8 +1551,8 @@ disable this check with the -z command line argument or by setting
         if not os.path.exists(f):
             panic("'%s' doesn't exist!" % f)
 
-    os.putenv("ASN1SCC", getSingleLineFromCmdOutput("echo $(which asn1.exe)").strip())
-    os.putenv("ASN2DATAMODEL", getSingleLineFromCmdOutput("echo $(which asn2dataModel)").strip())
+    os.putenv("ASN1SCC", getSingleLineFromCmdOutput("echo $DMT").strip()+"/asn1scc/asn1.exe")
+    os.putenv("ASN2DATAMODEL", getSingleLineFromCmdOutput("echo $DMT").strip()+"/asn2dataModel/asn2dataModel.py")
 
     if 0 == len(os.popen("ocarina -V 2>&1 | grep ^Ocarina").readlines()):
         panic("Your PATH has no 'ocarina' !")
@@ -1538,7 +1602,7 @@ def CreateDataViews(i_aadlFile, asn1Grammar, acnFile, baseASN, md5s, md5hashesFi
         oldBaseACN = os.path.basename(acnFile)
         if os.path.exists(oldBaseACN):
             os.unlink(oldBaseACN)
-        mysystem("mono \"$ASN1SCC\" -ACND \""+baseASN+"\"")
+        mysystem("mono \"$DMT\"/asn1scc/asn1.exe -ACND \""+baseASN+"\"")
         acnFile = os.path.abspath(baseASN.replace(".asn", ".acn"))
 
     # Now create the full (non-cropped) ASN.1 grammar, since the DataView AADL we will create below must include ALL types
@@ -1549,7 +1613,7 @@ def CreateDataViews(i_aadlFile, asn1Grammar, acnFile, baseASN, md5s, md5hashesFi
     newGrammar = False
     if asn1Grammar not in md5s or (acnFile not in md5s) or \
             md5s[asn1Grammar]!=md5hash(asn1Grammar) or md5s[acnFile]!=md5hash(acnFile):
-        mysystem("asn2aadlPlus -acn \"" + acnFile + "\" \"" + asn1Grammar + "\" D_view.aadl")
+        mysystem("\"$DMT/asn2aadlPlus/asn2aadlPlus.py\" -acn \"" + acnFile + "\" \"" + asn1Grammar + "\" D_view.aadl")
         md = open(g_absOutputDir+os.sep+md5hashesFilename, 'a')
         md.write("%s:%s\n" % (asn1Grammar, md5hash(asn1Grammar)))
         md.write("%s:%s\n" % (acnFile, md5hash(acnFile)))
@@ -1561,7 +1625,7 @@ def CreateDataViews(i_aadlFile, asn1Grammar, acnFile, baseASN, md5s, md5hashesFi
 
     if asn1Grammar+"_aadlv2" not in md5s or (acnFile not in md5s) or \
             md5s[asn1Grammar+"_aadlv2"]!=md5hash(asn1Grammar) or md5s[acnFile]!=md5hash(acnFile):
-        mysystem("asn2aadlPlus -aadlv2  -acn \"" + acnFile + "\" \"" + asn1Grammar + "\" D_view_aadlv2.aadl")
+        mysystem("\"$DMT/asn2aadlPlus/asn2aadlPlus.py\" -aadlv2  -acn \"" + acnFile + "\" \"" + asn1Grammar + "\" D_view_aadlv2.aadl")
         md = open(g_absOutputDir+os.sep+md5hashesFilename, 'a')
         md.write("%s:%s\n" % (asn1Grammar+"_aadlv2", md5hash(asn1Grammar)))
         md.write("%s:%s\n" % (acnFile, md5hash(acnFile)))
@@ -1592,19 +1656,19 @@ def InvokeASN1Compiler(asn1Grammar, baseASN, acnFile, baseACN, isNewGrammar, bCo
     # Invoke compiler
     if isNewGrammar:
         if bCoverage:
-            mysystem("mono \"$ASN1SCC\" -c -uPER -typePrefix asn1Scc -noInit -noChecks -wordSize 8 -ACN \""+baseACN+"\" \""+baseASN+"\"")
+            mysystem("mono \"$DMT\"/asn1scc/asn1.exe -c -uPER -typePrefix asn1Scc -noInit -noChecks -wordSize 8 -ACN \""+baseACN+"\" \""+baseASN+"\"")
         else:
-            mysystem("mono \"$ASN1SCC\" -c -uPER -typePrefix asn1Scc -wordSize 8 -ACN \""+baseACN+"\" \"" + baseASN+"\"")
+            mysystem("mono \"$DMT\"/asn1scc/asn1.exe -c -uPER -typePrefix asn1Scc -wordSize 8 -ACN \""+baseACN+"\" \"" + baseASN+"\"")
     else:
         print "No need to reinvoke the ASN.1 compiler"
         sys.stdout.flush()
 
     # Create message printers, for use when displaying inner messages with MSCs
-    msgPrinter = getSingleLineFromCmdOutput("echo $(which msgPrinter)").strip()
+    msgPrinter = getSingleLineFromCmdOutput("echo $DMT").strip()+"/asn2dataModel/msgPrinter.py"
     mysystem('"'+msgPrinter+'" "' + baseASN + '"')
 
     # Create message printers for ASN.1 variables, for use when sending messages for MSCs
-    msgPrinter = getSingleLineFromCmdOutput("echo $(which msgPrinterASN1").strip()
+    msgPrinter = getSingleLineFromCmdOutput("echo $DMT").strip()+"/asn2dataModel/msgPrinterASN1.py"
     mysystem('"'+msgPrinter+'" "' + baseASN + '"')
 
     os.chdir('../')
@@ -1773,7 +1837,7 @@ def DetectAdaPackages(adaSubsystems, asn1Grammar):
         g_stageLog.info("Detecting Ada Packages")
     uniqueSetOfAdaPackages = {"adaasn1rtl": 1}
     if adaSubsystems:
-        for l in os.popen("mono \"$ASN1SCC\" -AdaUses \"%s\"" % asn1Grammar).readlines():
+        for l in os.popen("mono \"$DMT\"/asn1scc/asn1.exe -AdaUses \"%s\"" % asn1Grammar).readlines():
             uniqueSetOfAdaPackages[l.split(':')[1].rstrip().lower()]=1
     return uniqueSetOfAdaPackages
 
@@ -1897,6 +1961,12 @@ def ParsePartitionInformation():
             g_log.write('for ' + partitionNameWithoutSuffix + ', identified CFLAGS:\n' + cf + '\n')
             g_log.write('for ' + partitionNameWithoutSuffix + ', identified LDFLAGS:\n' + ld + '\n')
             g_distributionNodesPlatform[partitionName] = [data[2], prefix]
+            try:
+                if 'coverage' in data[3:]:
+                    g_customCFlagsPerNode.setdefault(partitionName, []).append("-g -fprofile-arcs -ftest-coverage -DCOVERAGE")
+                    g_customLDFlagsPerNode.setdefault(partitionName, []).append("-g  -fprofile-arcs -ftest-coverage -lgcov")
+            except:
+                pass
         else:
             g_fromFunctionToPartition[line] = partitionNameWithoutSuffix
             if line not in g_distributionNodes[partitionName]:
@@ -1953,6 +2023,21 @@ def InvokeObjectGeodeGenerator(ogSubsystems):
         os.chdir(baseDir)
         if len(ogSubsystems[baseDir]) == 0:
             panic("At least one .pr file must be specified! (%s)" % str(baseDir))
+#       if baseDir[0].lower().endswith(".zip"):
+#           # This is an ObjectGeode zip
+#           mysystem("unzip -o \"" + baseDir[0] + "\"")
+#           if not os.path.isdir("ext"):
+#               panic("Zip file '%s' must contain a directory 'ext' with the OG generated code\n" % baseDir[0])
+#           sdl = [x for x in os.listdir(".") if x.endswith(".pr")]
+#           if len(sdl) == 0:
+#               panic("Zip file '%s' does not contain a .pr file in the root directory" % baseDir[0])
+#           mysystem("cp \"$DMT\"/OG/g2_*.h \"$DMT\"/OG/g2_*.c ext/")
+#           #os.system('wine "$DMT/OG/build_SDL_glue.exe" "' + sdl[0] + '"')
+#           os.system('"$DMT/OG/buildsupport" -gw -glue "' + sdl[0] + '"')
+#           mysystem("cp *.[ch] ext/")
+#           mysystem("cp \"$DMT\"/OG/sdl_main.c ext/")
+#           mysystem("cp \"$DMT\"/OG/g2_btstr.c ext/")
+#           mysystem("rm -f ext/n_*.c")
         mkdirIfMissing("ext")
         os.chdir("ext")
         for f in ogSubsystems[baseDir]:
@@ -1981,6 +2066,9 @@ def CreateAndCompileGlue(
     mkdirIfMissing("GlueAndBuild")
     os.chdir("GlueAndBuild")
     mysystem("cp \"" + asn1Grammar + "\" .")
+#    ocarina_marshallers = open('asn1_marshallers.aadl.new', 'w')
+#    ocarina_marshallers.write('package ASN1\npublic\n')
+#    ocarina_marshallers.write('with dataview;\n\n')
 
     #TheInitializationOfTheHeapSourceFile = ""
     def InvokeAadl2GlueCandCompile(baseDir, lock):
@@ -1995,12 +2083,17 @@ def CreateAndCompileGlue(
         sys.stdout.flush()
         lock.release()
 
+        #mysystem("\"$DMT\"/aadl2glueC/aadl2glueC -o \"glue" + baseDir + "\" ../D_view.aadl \"../" + baseDir + "/" + baseDir + "_cv.aadl\"")
 
         absDview = os.path.abspath('../D_view.aadl')
         absMinicv = os.path.abspath('../'+baseDir+'/mini_cv.aadl')
         if absDview not in md5s or md5s[absDview] != md5hash(absDview) or absMinicv not in md5s or md5s[absMinicv] != md5hash(absMinicv):
-            mysystem("aadl2glueC -o \"glue" + baseDir + "\" ../D_view.aadl \"../" + baseDir + "/mini_cv.aadl\"")
+            mysystem("\"$DMT\"/aadl2glueC/aadl2glueC.py -o \"glue" + baseDir + "\" ../D_view.aadl \"../" + baseDir + "/mini_cv.aadl\"")
 
+            #mysystem("cp \"$DMT\"/asn2aadlPlus/privateHeap/malloc.c \"glue"+baseDir+"\"")
+            #mysystem("cp \"$DMT\"/asn2aadlPlus/privateHeap/staticMoreCore.[ch] \"glue"+baseDir+"\"")
+            #if 0 != os.stat('glue'+baseDir+'/Initialization.c')[stat.ST_SIZE]:
+            #    TheInitializationOfTheHeapSourceFile = 'glue'+baseDir+'/Initialization.c'
             if 0 == len([x for x in os.listdir("glue"+baseDir) if x.endswith(".c") or x.endswith(".h")]):
                 return
             os.chdir("glue"+baseDir)
@@ -2055,6 +2148,26 @@ def CreateAndCompileGlue(
                     cflagsSoFar+CalculateCFLAGS(baseDir, withPOHIC=False)+CalculateUserCodeOnlyCFLAGS(baseDir),
                     scadeIncludes, simulinkIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes))
             os.chdir("..")
+#       try:
+#           for line in open('glue' + baseDir + '/asn1_marshallers.aadl','r'):
+#               if not line.startswith('package ASN1') and not line.startswith('public') and not line.startswith('end ASN1;'):
+#                   ocarina_marshallers.write(line)
+#       except:
+#           pass
+#
+#    ocarina_marshallers.write('end ASN1;');
+#    ocarina_marshallers.close()
+#
+#    if not os.path.exists('asn1_marshallers.aadl') or md5hash('asn1_marshallers.aadl.new')!=md5hash('asn1_marshallers.aadl'):
+#       mysystem("mv asn1_marshallers.aadl.new asn1_marshallers.aadl")
+#
+#    # here: we have to check if asn1_marshallers.aadl contains useful data. If not we will not include it in the main.aadl file (otherwise, BOOM).
+#    # (Added by MP 03/12/2008)
+#    if os.path.getsize('asn1_marshallers.aadl')>30:
+#        tmpAsn1marshallers = ", \"asn1_marshallers.aadl\""
+#    else :
+#        tmpAsn1marshallers = ""
+#
 
     lock = multiprocessing.Lock()
     listOfAadl2GluecProcesses = []
@@ -2086,6 +2199,8 @@ def CreateAndCompileGlue(
         runningInstances += 1
     for p in listOfAadl2GluecProcesses:
         p.join()
+        if p.exitcode != 0:
+            allSuccessful = False
     g_bRetry = retry
     if not allSuccessful:
         panic("aadl2glueC invocation failed...")
@@ -2097,11 +2212,26 @@ def InvokeOcarina(i_aadlFile, depl_aadlFile, md5s, md5hashesFilename, wrappers):
     g_stageLog.info("Invoking Ocarina")
     mkdirIfMissing("GlueAndBuild")
     os.chdir('GlueAndBuild')
-
+#    mysystem("unzip -o \""+vmZip+"\"")
+#    if not os.path.isdir("src"):
+#       panic("VM Zip file '%s' did not include a src/ subdirectory" % vmZip)
+#    mysystem("find src/ -type f -exec mv '{}' . \;")
+#    mysystem("rm -rf src")
+#    mysystem("\"$GNATGCC\" -c -g *adb")
+#    mysystem("\"$GNATGCC\" -c -g n1*ads")
+#    mysystem("\"$GNATGCC\" -c -g system_time.ads")
     shutil.copy("../D_view_aadlv2.aadl", "./D_view.aadl")
+    #NEW NATIVE GUI allows direct support for AADLv2
+    #shutil.copy(depl_aadlFile_aadlv2, ".")
     shutil.copy(depl_aadlFile, ".")
     for x in wrappers:
         mysystem("cp -u \""+x+"\" . 2>/dev/null || exit 0")
+    # Ocarana_config::Root_System_name => "rootsystemname";
+    #
+    # 2013/09/05: Maxime says this is not necessary, it is hardcoded
+    #rootSystemName = getSingleLineFromCmdOutput("tail -1 ../ConcurrencyView/process.aadl")
+    #rootSystemName = rootSystemName.strip()
+    #rootSystemName = rootSystemName[3:]  # lose the '-' '-' 'space'
 
     rootSystemName = 'deploymentview.final'
     mainaadl = open('main.aadl.new', 'w')
@@ -2138,6 +2268,8 @@ end ASSERT_System;
 system implementation ASSERT_System.Impl
 end ASSERT_System.Impl;
 ''' %
+                   #NEW NATIVE GUI allows direct support for AADLv2
+                   #(  os.path.basename(depl_aadlFile_aadlv2),
                    (
                        '"'+os.path.basename(i_aadlFile)+'",',
                        os.path.basename(depl_aadlFile),
@@ -2153,7 +2285,10 @@ end ASSERT_System.Impl;
         mysystem("mv main.aadl.new main.aadl")
 
     # Check to see if the md5 signatures of the source AADL files are the same - if they are, don't invoke ocarina!
+    #NEW NATIVE GUI allows direct support for AADLv2
+    #aadlSources = [depl_aadlFile_aadlv2, os.path.abspath('D_view.aadl')]
     aadlSources = [depl_aadlFile, os.path.abspath('D_view.aadl')]
+#    if tmpAsn1marshallers!="": aadlSources.append( os.path.abspath('asn1_marshallers.aadl') )
     aadlSources.extend([os.path.abspath("../ConcurrencyView/"+x) for x in os.listdir("../ConcurrencyView/") if x != "nodes"])
     invokeOcarina = False
     for i in aadlSources:
@@ -2166,6 +2301,7 @@ end ASSERT_System.Impl;
     mysystem("cp $(ocarina-config --resources)/AADLv2/ocarina_components.aadl .")
     mysystem('cleanupDV.pl "%s" > a_temp_name && mv a_temp_name "%s"' % (os.path.basename(depl_aadlFile), os.path.basename(depl_aadlFile)))
     if invokeOcarina:
+        #banner("Invoking ocarina")
         mysystem("find . -type d \( -iname 'glue*' -prune -o -exec rm -rf '{}' ';' \) 2>/dev/null || exit 0")
         mysystem("ocarina -x main.aadl")
         md = open(g_absOutputDir+os.sep+md5hashesFilename, 'a')
@@ -2249,7 +2385,6 @@ def ApplyPatchForDeploymentViewNeededByOcarinaForNewEllidissTools(depl_aadlFile)
 
 
 def main():
-    setLogger()
     FixEnvVars()
     cmdLineInformation = ParseCommandLineArgs()
     outputDir, i_aadlFile, depl_aadlFile, \
@@ -2376,6 +2511,7 @@ def main():
         bDebug, bUseEmptyInitializers, bCoverage, bProfiling)
 
     GatherAllExecutableOutput(outputDir, pythonSubsystems, tmpDirName, commentedGUIfilters, bDebug, i_aadlFile)
+    CopyDatabaseFolderIfExisting()
 
 if __name__ == "__main__":
     main()
