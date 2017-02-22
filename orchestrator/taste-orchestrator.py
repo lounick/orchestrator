@@ -1,16 +1,16 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
+'''
+This is the orchestrator that builds all TASTE systems - completely automating
+the build process, invoking all necessary tools and code generators
+'''
 #
 # (C) Semantix Information Technologies.
 #
+# Copyright 2014-2015 IB Krates <info@krates.ee>
+#       QGenc code generator integration
+#
 # Semantix Information Technologies is licensing the code of the
 # Data Modelling Tools (DMT) in the following dual-license mode:
-#
-# Commercial Developer License:
-#       The DMT Commercial Developer License is the appropriate version
-# to use for the development of proprietary and/or commercial software.
-# This version is for developers/companies who do not want to share
-# the source code they develop with others or otherwise comply with the
-# terms of the GNU General Public License version 2.1.
 #
 # GNU GPL v. 2.1:
 #       This version of DMT is the one to use for the development of
@@ -131,6 +131,11 @@ class ColorFormatter(logging.Formatter):
         msg = self.formatter_msg(self.FORMAT)
         logging.Formatter.__init__(self, msg)
 
+    @staticmethod
+    def bold_string(s):
+        fore_color = 30 + ColorFormatter.COLORS['WARNING']
+        return ColorFormatter.COLOR_SEQ % fore_color + s + ColorFormatter.RESET_SEQ
+
     def formatter_msg(self, msg):
         if self.use_color:
             msg = msg.replace("$RESET", self.RESET_SEQ).replace("$BOLD", self.BOLD_SEQ)
@@ -173,9 +178,9 @@ def mysystem(x, outputDir=None):
         if g_bRetry:
             if os.getenv('CLEANUP') is not None:
                 print "Exception in user code:"
-                print '-'*60
+                print '-' * 60
                 traceback.print_stack()
-                print '-'*60
+                print '-' * 60
             sys.stderr.write("Failed while executing:\n" + x + "\nFrom this directory:\n" + os.getcwd())
             sys.stdout.flush()
             sys.stderr.flush()
@@ -191,7 +196,7 @@ def getSingleLineFromCmdOutput(cmd):
     try:
         f = os.popen(cmd)
         returnedLine = f.readlines()[0].strip()
-        if None != f.close():
+        if f.close() is not None:
             print "Failed! Output was:\n", returnedLine
             raise Exception()
         return returnedLine
@@ -202,7 +207,7 @@ def getSingleLineFromCmdOutput(cmd):
 def banner(msg):
     '''Splashes message in big green letters'''
     if sys.stdout.isatty():
-        print "\n"+chr(27)+"[32m" + msg + chr(27) + "[0m\n"
+        print "\n" + chr(27) + "[32m" + msg + chr(27) + "[0m\n"
     else:
         print "\n" + msg + "\n"
     if not g_bFast:
@@ -213,7 +218,7 @@ def banner(msg):
 
 def usage():
     '''Shows all available cmd line arguments'''
-    panic("TASTE/ASSERT orchestrator, revision: $Rev: 7811 $\n"
+    panic("TASTE/ASSERT orchestrator, revision: $Rev: 8102 $\n"
           "Usage: " + os.path.basename(sys.argv[0]) + " <options>\nWhere <options> are:\n\n"
           "-f, --fast\n\tSkip waiting for ENTER between stages\n\n"
           "-g, --debug\n\tEnable debuging options\n\n"
@@ -236,7 +241,8 @@ def usage():
           "-e, --with-extra-C-code deploymentPartition:directoryWithCfiles\n\tDirectory containing additional .c files to be compiled and linked in for deploymentPartition\n\n"
           "-d, --with-extra-Ada-code deploymentPartition:directoryWithADBfiles\n\tDirectory containing additional .adb files to be compiled and linked in for deploymentPartition\n\n"
           "-l, --with-extra-lib deploymentPartition:/path/to/libLibrary1.a<,/path/to/libLibrary2.a,...>\n\tAdditional libraries to be linked in for deploymentPartition\n\n"
-          "-w, --with-cv-attributes properties_filename\n\tUpdate thread priorities, stack size and offset/phase during the build")
+          "-w, --with-cv-attributes properties_filename\n\tUpdate thread priorities, stack size and offset/phase during the build\n\n"
+          "-x, --timer granularityInMilliseconds\n\tSet timer resolution (default: 100ms)")
 
 
 def md5hash(filename):
@@ -348,8 +354,8 @@ def CalculateCFLAGS(node, withPOHIC=True):
                 result += ' '.join(g_customCFlagsPerNode[key])
                 break
     # Let the user specify -fdata-sections -ffunction-sections if he wants.
-    #if "-pg" not in result and not any(map(lambda x: x in kind, ["LEON", "COMPCERT"])):
-    #   result += " -fdata-sections -ffunction-sections "
+    # if "-pg" not in result and not any(map(lambda x: x in kind, ["LEON", "COMPCERT"])):
+    #    result += " -fdata-sections -ffunction-sections "
     return result
 
 
@@ -524,7 +530,7 @@ def CommonBuildingPart(
     partitionName = g_fromFunctionToPartition[baseDir]
     if partitionName in CDirectories:
         for d in CDirectories[partitionName]:
-            extraCdirIncludes += "-I \""+d + "\" "
+            extraCdirIncludes += "-I \"" + d + "\" "
     if (baseDir in g_distributionNodesPlatform.keys()):
         UpdateEnvForNode(baseDir)
     cflags = cflagsSoFar + extraCdirIncludes + CalculateCFLAGS(baseDir) + CalculateUserCodeOnlyCFLAGS(baseDir)
@@ -590,7 +596,7 @@ def BuildAdaSystems_C_code(adaSubsystems, unused_CDirectories, uniqueSetOfAdaPac
         os.chdir(baseDir + os.sep + baseDir)
         CheckDirectives(baseDir)
         mysystem("for i in `/bin/ls ../../GlueAndBuild/glue%s/*.ad? 2>/dev/null | grep -v '/asn1_'` ; do cp \"$i\"  . ; done" % baseDir)
-        #mysystem("cp ../../GlueAndBuild/glue%s/asn1_types.ads ." % baseDir)
+        # mysystem("cp ../../GlueAndBuild/glue%s/asn1_types.ads ." % baseDir)
         mysystem("cp ../../GlueAndBuild/glue%s/adaasn1rtl.ad? . 2>/dev/null ; exit 0" % baseDir)
         for modulebase in uniqueSetOfAdaPackages.keys():
             mysystem("cp ../../GlueAndBuild/glue%s/%s.ad? . 2>/dev/null ; exit 0" % (baseDir, modulebase))
@@ -600,12 +606,12 @@ def BuildAdaSystems_C_code(adaSubsystems, unused_CDirectories, uniqueSetOfAdaPac
         mysystem("cp ../*polyorb_interface.h . 2>/dev/null || exit 0")
         mysystem("rm -f ../dataview.ad[sb] 2>/dev/null || exit 0")
         # obsolete: compilation of Ada code is done via Ocarina's makefiles, not by the orchestrator
-        #mysystem("\"$GNATGCC\" -g -c *.adb")
-        #mysystem("for i in *.ads ; do [ ! -f ${i/.ads/.adb} ] && \"$GNATGCC\" -g -c *.ads || break ; done")
+        # mysystem("\"$GNATGCC\" -g -c *.adb")
+        # mysystem("for i in *.ads ; do [ ! -f ${i/.ads/.adb} ] && \"$GNATGCC\" -g -c *.ads || break ; done")
         if (baseDir in g_distributionNodesPlatform.keys()):
             UpdateEnvForNode(baseDir)
         mysystem("\"$GNATGCC\" -c %s -I ../../GlueAndBuild/glue%s/ -I ../../auto-src/ *.c" %
-                 (cflagsSoFar+CalculateCFLAGS(baseDir)+CalculateUserCodeOnlyCFLAGS(baseDir), baseDir))
+                 (cflagsSoFar + CalculateCFLAGS(baseDir) + CalculateUserCodeOnlyCFLAGS(baseDir), baseDir))
         os.chdir("..")
         cflags = cflagsSoFar + CalculateCFLAGS(baseDir) + CalculateUserCodeOnlyCFLAGS(baseDir)
         mysystem("\"$GNATGCC\" -c -I ../GlueAndBuild/glue%s/ -I ../auto-src/ %s *.c" % (baseDir, cflags))
@@ -624,12 +630,7 @@ def BuildObjectGeodeSystems(ogSubsystems, CDirectories, cflagsSoFar):
         # This is for ObjectGeode code
         os.chdir(baseDir + os.sep + "ext")
         CheckDirectives(baseDir)
-        #mysystem("cp \"$DMT\"/asn2aadlPlus/privateHeap/malloc.c .")
-        #mysystem("cp \"$DMT\"/asn2aadlPlus/privateHeap/staticMoreCore.[ch] .")
-        #mysystem("for i in ../../auto-src/*.h ; do ln -s \"$i\" ; done")
-        #mysystem("ln -s \"../../GlueAndBuild/%s\"" % TheInitializationOfTheHeapSourceFile)
         mysystem("if [ ! -f \"$WORKDIR/GlueAndBuild/glue%s/OG_ASN1_Types.h\" ] ; then touch \"$WORKDIR/GlueAndBuild/glue%s/OG_ASN1_Types.h\" ; fi" % (ss, ss))
-        #mysystem("if [ -f vm_callback.c ] ; then mv vm_callback.c vm_callback.c.disabled ; fi")
         mysystem("cp ../*polyorb_interface.? . 2>/dev/null || exit 0")
         mysystem("cp ../Context-*.? . 2>/dev/null || exit 0")
         mysystem("rm -f ../*-uniq.? *-uniq.? 2>/dev/null || exit 0")
@@ -638,11 +639,11 @@ def BuildObjectGeodeSystems(ogSubsystems, CDirectories, cflagsSoFar):
         partitionName = g_fromFunctionToPartition[baseDir]
         if partitionName in CDirectories:
             for d in CDirectories[partitionName]:
-                extraCdirIncludes += "-I \""+d + "\" "
+                extraCdirIncludes += "-I \"" + d + "\" "
         if (baseDir in g_distributionNodesPlatform.keys()):
             UpdateEnvForNode(baseDir)
         mysystem("for i in *.c ; do \"$GNATGCC\" -c %s -I \"$WORKDIR/auto-src/\"  -I \"$WORKDIR/GlueAndBuild/glue%s/\" \"$i\" || exit 1 ; done" %
-                 (cflagsSoFar+extraCdirIncludes+CalculateCFLAGS(ss)+CalculateUserCodeOnlyCFLAGS(ss), ss))
+                 (cflagsSoFar + extraCdirIncludes + CalculateCFLAGS(ss) + CalculateUserCodeOnlyCFLAGS(ss), ss))
         os.chdir("../..")
 
 
@@ -668,11 +669,11 @@ def BuildRTDSsystems(rtdsSubsystems, CDirectories, cflagsSoFar):
         partitionName = g_fromFunctionToPartition[baseDir]
         if partitionName in CDirectories:
             for d in CDirectories[partitionName]:
-                extraCdirIncludes += "-I \""+d + "\" "
+                extraCdirIncludes += "-I \"" + d + "\" "
         if (baseDir in g_distributionNodesPlatform.keys()):
             UpdateEnvForNode(baseDir)
         mysystem("\"$GNATGCC\" -c -DRTDS_NO_SCHEDULER %s %s -I ../../GlueAndBuild/glue%s/ -I ../../auto-src/ -I ../profile *.c" %
-                 (cflagsSoFar+CalculateCFLAGS(baseDir)+CalculateUserCodeOnlyCFLAGS(baseDir), extraCdirIncludes, baseDir))
+                 (cflagsSoFar + CalculateCFLAGS(baseDir) + CalculateUserCodeOnlyCFLAGS(baseDir), extraCdirIncludes, baseDir))
         os.chdir("../..")
 
 
@@ -688,12 +689,12 @@ def BuildVHDLsystems_C_code(vhdlSubsystems, CDirectories, cflagsSoFar):
         partitionName = g_fromFunctionToPartition[baseDir]
         if partitionName in CDirectories:
             for d in CDirectories[partitionName]:
-                extraCdirIncludes += "-I \""+d + "\" "
+                extraCdirIncludes += "-I \"" + d + "\" "
         if len([x for x in os.listdir(".") if x.endswith("polyorb_interface.c")])>0:
             if (baseDir in g_distributionNodesPlatform.keys()):
                 UpdateEnvForNode(baseDir)
             mysystem("\"$GNATGCC\" -c %s %s -I ../GlueAndBuild/glue%s/ -I ../auto-src/ *.c" %
-                     (cflagsSoFar+CalculateCFLAGS(baseDir)+CalculateUserCodeOnlyCFLAGS(baseDir), extraCdirIncludes, baseDir))
+                     (cflagsSoFar + CalculateCFLAGS(baseDir) + CalculateUserCodeOnlyCFLAGS(baseDir), extraCdirIncludes, baseDir))
         os.chdir("..")
 
 
@@ -706,8 +707,8 @@ def BuildGUIs(guiSubsystems, cflagsSoFar, asn1Grammar):
         if not os.path.isdir(baseDir):
             panic("No directory %s! (pwd=%s)" % (baseDir, os.getcwd()))
         # This is for GUI code
-        if not os.path.exists(baseDir + os.sep + baseDir+"_gui_code.c"):
-            panic("GUI generated code did not contain a %s ..." % (baseDir+os.sep+baseDir+"_gui_code.c"))
+        if not os.path.exists(baseDir + os.sep + baseDir + "_gui_code.c"):
+            panic("GUI generated code did not contain a %s ..." % (baseDir + os.sep + baseDir + "_gui_code.c"))
         os.chdir(baseDir)
         mkdirIfMissing("ext")
         mysystem('for i in * ; do if [ -f "$i" -a ! -e ext/"$i" ] ; then ln -s ../"$i" ext/ ; fi ; done')
@@ -740,64 +741,12 @@ def BuildGUIs(guiSubsystems, cflagsSoFar, asn1Grammar):
         os.chdir("GUI")
         mysystem("cp \"$DMT\"/AutoGUI/* .")
         mysystem("cat Makefile | sed 's,DataView,%s,g' > a_temp_name && mv a_temp_name Makefile" % os.path.splitext(os.path.basename(asn1Grammar))[0])
-        mysystem("cat Makefile | sed 's,applicationName,%s,g' > a_temp_name && mv a_temp_name Makefile" % (baseDir+"_GUI"))
-#        mysystem("cp -u ../../GlueAndBuild/glue" + baseDir + "/My* .")
-#        mysystem("cp -u ../../GlueAndBuild/glue" + baseDir + "/telecmds.* .")
+        mysystem("cat Makefile | sed 's,applicationName,%s,g' > a_temp_name && mv a_temp_name Makefile" % (baseDir + "_GUI"))
         mysystem("cp -u ../../GlueAndBuild/glue" + baseDir + "/C_*.[ch] .")
-        #mysystem("cp ../auto-src/* .")
+        # mysystem("cp ../auto-src/* .")
         if baseDir.endswith('probe_console'):
             os.chdir("../..")
             continue
-#        g_stageLog.info("Creating GUI: " + baseDir)
-#        mysystem("make")
-#
-#        # Generation of Gnuplot support scripts
-#        gnuplotMeasurements = "../../GlueAndBuild/glue" + baseDir + os.sep + "gnuplot"
-#        if os.path.exists(gnuplotMeasurements) and 0 != len(open(gnuplotMeasurements, 'r').readlines()):
-#            outputIndex = 0
-#            lines = []
-#            gnuplotScript = open("../../" + baseDir + ".pl", "w")
-#            gnuplotScript.write('''#!/usr/bin/perl -w
-#use strict;
-#
-#select((select(STDOUT), $| = 1)[0]);
-#
-#open DATA, "../%s_GUI |";
-#
-#while(<DATA>) {
-#''' % baseDir)
-#            for line in open("../../GlueAndBuild/glue" + baseDir + os.sep + "gnuplot").readlines():
-#                lines.append(line.strip())
-#                commentMe = "# " if outputIndex>4 else ""
-#                gnuplotScript.write('''%s    if (/^%s\D+([\d\.]+)/) {
-#%s        print "%d:$1\\n";
-#%s    }
-#''' % (commentMe, line.strip().replace("::", ".*").replace("_", "[_-]"), commentMe, outputIndex, commentMe))
-#                outputIndex = outputIndex + 1
-#            if outputIndex>5:
-#                commentedGUIfilters.append(baseDir+".pl")
-#            gnuplotScript.write('''
-#}
-#close DATA;
-#''')
-#            gnuplotScript.close()
-#            mysystem("chmod +x ../../" + baseDir + ".pl")
-#            gnuplot_gui = open("../../" + baseDir + "_RunAndPlot.sh", "w")
-#            gnuplot_gui.write("#!/bin/bash\n\n")
-#            gnuplot_gui.write("./%s.pl | taste-gnuplot-streams %d " % (baseDir, outputIndex))
-#            if outputIndex>0:
-#                for i in range(0, outputIndex):
-#                    # number of sample for each window
-#                    gnuplot_gui.write("50 ")
-#                for line in lines:
-#                    # label of each window
-#                    gnuplot_gui.write('\'' + line + "\' ")
-#                for i in range(0, outputIndex):
-#                    # size and position of each window (len x wid + posX + posY)
-#                    gnuplot_gui.write("336x256+%d+0 " % (i * 360))
-#            gnuplot_gui.write("\n")
-#            gnuplot_gui.close()
-#            mysystem("chmod +x ../../" + baseDir + "_RunAndPlot.sh")
         os.chdir("../..")
     return commentedGUIfilters
 
@@ -809,8 +758,6 @@ def BuildPythonStubs(pythonSubsystems, asn1Grammar, acnFile):
     for baseDir in pythonSubsystems:
         if not os.path.isdir(baseDir):
             panic("No directory %s! (pwd=%s)" % (baseDir, os.getcwd()))
-        if not os.path.exists(baseDir + os.sep + "PythonAccess.i"):
-            panic("Python generated code did not contain a %s ..." % (baseDir+os.sep+"PythonAccess.i"))
         olddir = os.getcwd()
         pattern = re.compile(r'.*?glue([^/]*)')
         findFV = re.match(pattern, baseDir)
@@ -826,7 +773,7 @@ def BuildPythonStubs(pythonSubsystems, asn1Grammar, acnFile):
         mysystem("cp \"%s\" ." % asn1Grammar)
         mysystem("cp \"%s\" ." % acnFile)
         mkdirIfMissing("asn2dataModel")
-        mysystem("\"$ASN2DATAMODEL\" -o asn2dataModel -toPython " + os.path.basename(asn1Grammar))
+        mysystem("asn2dataModel -o asn2dataModel -toPython " + os.path.basename(asn1Grammar))
         os.chdir("asn2dataModel")
         mysystem("cp \"%s\" ." % acnFile)
 
@@ -843,14 +790,16 @@ def BuildPythonStubs(pythonSubsystems, asn1Grammar, acnFile):
                 installPath = getSingleLineFromCmdOutput("taste-config --prefix")
                 mysystem('cp "%s"/share/gui-udp/Makefile.python .' % installPath)
         mysystem("cp \"%s\"/%s/interface_enum.h ." % (g_absOutputDir, FVname))
-        mysystem("make -f Makefile.python taste")
+        mysystem("make -f Makefile.python")
         os.chdir("..")
-        mysystem("cp asn2dataModel/asn1crt.h asn2dataModel/Stubs.py asn2dataModel/DV.py asn2dataModel/_DV.* .")
+        mysystem("cp asn2dataModel/asn1crt.h asn2dataModel/Stubs.py asn2dataModel/DV* asn2dataModel/*.so .")
         mysystem("cp asn2dataModel/%s.h ." % os.path.splitext(os.path.basename(asn1Grammar))[0])
         mysystem("cp asn2dataModel/%s_asn.py ." % os.path.splitext(os.path.basename(asn1Grammar))[0].replace("-", "_"))
-        mysystem("swig  -Wall -includeall -outdir . -python ./PythonAccess.i")
-        mysystem("gcc -g -fPIC -c `python-config --cflags` gui_swig.c queue_manager.c timeInMS.c debug_messages.c PythonAccess_wrap.c")
-        mysystem("gcc -g -shared -o _PythonAccess.so PythonAccess_wrap.o gui_swig.o queue_manager.o timeInMS.o debug_messages.o `python-config --ldflags` -lrt")
+        # mysystem("swig  -Wall -includeall -outdir . -python ./PythonAccess.i")
+        # mysystem("gcc -g -fPIC -c `python-config --cflags` gui_api.c queue_manager.c timeInMS.c debug_messages.c PythonAccess_wrap.c")
+        mysystem("gcc -g -fPIC -c `python-config --cflags` gui_api.c queue_manager.c timeInMS.c debug_messages.c")
+        # mysystem("gcc -g -shared -o _PythonAccess.so PythonAccess_wrap.o gui_swig.o queue_manager.o timeInMS.o debug_messages.o `python-config --ldflags` -lrt")
+        mysystem("gcc -g -shared -o PythonAccess.so gui_api.o queue_manager.o timeInMS.o debug_messages.o `python-config --ldflags` -lrt")
         os.chdir(olddir)
 
 
@@ -892,8 +841,8 @@ def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, cSubsystems,
         systemPlatform, pref = g_distributionNodesPlatform[baseDir]
         prefixes[pref] = systemPlatform
         appendTarget = getTarget(baseDir)
-        if 0 != len([x for x in os.listdir("GlueAndBuild/glue"+baseDir) if x.endswith(".o")]):
-            mysystem("mv GlueAndBuild/glue"+baseDir+"/*.o " + baseDir + appendTarget)
+        if 0 != len([x for x in os.listdir("GlueAndBuild/glue" + baseDir) if x.endswith(".o")]):
+            mysystem("mv GlueAndBuild/glue" + baseDir + "/*.o " + baseDir + appendTarget)
 
     for prefix, systemPlatform in prefixes.items():
         renamingDirs = 0
@@ -913,7 +862,7 @@ def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, cSubsystems,
                 cmd += ' "' + baseDir.replace(' ', '_') + '"'
                 renamingDirs += 1
         if renamingDirs > 1:
-            os.putenv("OBJCOPY", prefix+"objcopy")
+            os.putenv("OBJCOPY", prefix + "objcopy")
             asn1SccFolder = "auto-src_" + systemPlatform
             if os.path.isdir(asn1SccFolder):
                 cmd += ' ' + asn1SccFolder + "/"
@@ -1000,7 +949,7 @@ def InvokeOcarinaMakefiles(
                 os.mkdir(asn1target)
                 os.chdir(asn1target)
                 mysystem("cp ../auto-src/*.[ch] .")
-                mysystem("\"$GNATGCC\" -c %s *.c" % (cflagsSoFar+CalculateCFLAGS(node)+CalculateUserCodeOnlyCFLAGS(node)))
+                mysystem("\"$GNATGCC\" -c %s *.c" % (cflagsSoFar + CalculateCFLAGS(node) + CalculateUserCodeOnlyCFLAGS(node)))
                 os.chdir("..")
 
             if bNeedAdaBuildWorkaround:
@@ -1018,8 +967,8 @@ def InvokeOcarinaMakefiles(
                 TasteAda.write('package TasteAda is\n')
                 TasteAda.write('end TasteAda;\n')
                 TasteAda.close()
-                #open("conf.ec",'w').write("pragma No_Run_Time;\n")
-                #mysystem("gnatmake -c -I../../auto-src " + baseDir + " " + x + " -gnatec=conf.ec")
+                # open("conf.ec",'w').write("pragma No_Run_Time;\n")
+                # mysystem("gnatmake -c -I../../auto-src " + baseDir + " " + x + " -gnatec=conf.ec")
                 mysystem("\"$GNATMAKE\" -c %s -I.  -gnat2012 tasteada.ads" % mflags(node))
                 if not os.path.exists("tasteada.ali"):
                     panic("WARNING: No tasteada.ali file was generated")
@@ -1028,9 +977,9 @@ def InvokeOcarinaMakefiles(
                 mysystem("\"$GNATMAKE\" -c %s %s -gnat2012 ada-start.adb" % (dbg, mflags(node)))
                 for line in open("ada-start.adb").readlines():
                     if -1 != line.find("adalib"):
-                        poHiAdaLinkCmd = line.strip().replace ("--", "")
+                        poHiAdaLinkCmd = line.strip().replace("--", "")
                         runtimePath = " " + line.strip().replace("-L", "-Wl,-R") + " "
-                        poHiAdaLinkCmd += runtimePath.replace ("--", "")
+                        poHiAdaLinkCmd += runtimePath.replace("--", "")
                 if poHiAdaLinkCmd == "":
                     panic("There was no line containing 'adalib' inside 'ada-start.adb'")
                 poHiAdaLinkCmd += " -lgnat -lgnarl"
@@ -1086,9 +1035,9 @@ def InvokeOcarinaMakefiles(
                         os.chdir(extraCdir)
                         # banner("You use AADLv2 and external code, I don't know what flags to compile it with!!!")
                         if bUseEmptyInitializers:
-                            mysystem("\"$GNATGCC\" %s -c -DEMPTY_LOCAL_INIT *.c" % (CalculateCFLAGS(node)+CalculateUserCodeOnlyCFLAGS(node)))
+                            mysystem("\"$GNATGCC\" %s -c -DEMPTY_LOCAL_INIT *.c" % (CalculateCFLAGS(node) + CalculateUserCodeOnlyCFLAGS(node)))
                         else:
-                            mysystem("\"$GNATGCC\" %s -c *.c" % (CalculateCFLAGS(node)+CalculateUserCodeOnlyCFLAGS(node)))
+                            mysystem("\"$GNATGCC\" %s -c *.c" % (CalculateCFLAGS(node) + CalculateUserCodeOnlyCFLAGS(node)))
                         os.chdir(pwd)
 
             if partitionNameWithoutSuffix in CDirectories:
@@ -1109,9 +1058,11 @@ def InvokeOcarinaMakefiles(
             for aplc in g_distributionNodes[node]:
                 if aplc in vhdlSubsystems.keys():
                     if g_bPolyORB_HI_C:
-                        externals += ' "' + getSingleLineFromCmdOutput("echo $DMT").strip() + '/OG/libESAFPGAforC.a" '
+                        # externals += ' "' + getSingleLineFromCmdOutput("echo $DMT").strip() + '/OG/libESAFPGAforC.a" '
+                        externals += ' "' + getSingleLineFromCmdOutput("echo $DMT").strip() + '/ZestSC1/libZestSC1.a" /lib/i386-linux-gnu/libusb-0.1.so.4 '
                     else:
-                        externals += ' "' + getSingleLineFromCmdOutput("echo $DMT").strip() + '/OG/libESAFPGA.a" '
+                        # externals += ' "' + getSingleLineFromCmdOutput("echo $DMT").strip() + '/OG/libESAFPGA.a" '
+                        externals += ' "' + getSingleLineFromCmdOutput("echo $DMT").strip() + '/ZestSC1/libZestSC1.a" /lib/i386-linux-gnu/libusb-0.1.so.4'
                     break  # If you meet even one VHDL component for this node, the library was added to externals, no need to check further
 
             userLDFlags += " -lm "
@@ -1121,7 +1072,7 @@ def InvokeOcarinaMakefiles(
             if g_bPolyORB_HI_C and len(adaSubsystems) != 0:
                 userLDFlags += poHiAdaLinkCmd
 
-            #mysystem("cd '"+root+"' && cp ../../../*/*_sync.ads .")
+            # mysystem("cd '"+root+"' && cp ../../../*/*_sync.ads .")
             driversConfigPath = os.path.abspath("../DriversConfig/")
             if os.path.exists(driversConfigPath):
                 driversConfigs = os.listdir(driversConfigPath)
@@ -1129,9 +1080,12 @@ def InvokeOcarinaMakefiles(
                     if AdaIncludePath is None:
                         AdaIncludePath = driversConfigPath + "/" + dC
                     else:
-                        AdaIncludePath += ":"+driversConfigPath + "/" + dC
+                        AdaIncludePath += ":" + driversConfigPath + "/" + dC
 
-            cmd = "cd '"+root+"' && ADA_INCLUDE_PATH=\""+AdaIncludePath+"\" %s EXTERNAL_OBJECTS=\""
+            if AdaIncludePath is None:
+                cmd = "cd '" + root + "' && %s EXTERNAL_OBJECTS=\""
+            else:
+                cmd = "cd '" + root + "' && ADA_INCLUDE_PATH=\"" + AdaIncludePath + "\" %s EXTERNAL_OBJECTS=\""
             # Just before invoking ocarina-generated Makefiles, make sure that only one C_ASN1_Types.o is used:
             externalFiles = ' '.join(x for x in externals.split(' ') if not x.startswith("-"))
             os.system("rm -f `/bin/ls %s | grep C_ASN1_Types.o | sed 1d` ; exit 0" % externalFiles)
@@ -1169,10 +1123,10 @@ def InvokeOcarinaMakefiles(
                 userCFlags += " " + cflagsSoFar.replace('"', '\\"') + " "
             userCFlags = userCFlags.strip()
             if userCFlags != "":
-                userCFlags = ' '+userCFlags
+                userCFlags = ' ' + userCFlags
             userLDFlags = userLDFlags.strip()
             if userLDFlags != "":
-                userLDFlags = ' '+userLDFlags
+                userLDFlags = ' ' + userLDFlags
 
             if len(cppSubsystems)>0:
                 userLDFlags += " -lstdc++ "
@@ -1192,23 +1146,39 @@ def InvokeOcarinaMakefiles(
             userCFlags = keepOnlyFirstCompilationOption(userCFlags)
             userLDFlags = keepOnlyFirstCompilationOption(userLDFlags)
             customFlags = (' USER_CFLAGS="${USER_CFLAGS}%s" USER_LDFLAGS="${USER_LDFLAGS}%s"' % (userCFlags, userLDFlags))
-            mysystem((cmd % customFlags) + extra + externals+"\" make")
+            mysystem((cmd % customFlags) + extra + externals + "\" make")
     return AdaIncludePath
 
 
-def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, tmpDirName, commentedGUIfilters, bDebug, i_aadlFile):
+def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, vhdlSubsystems, tmpDirName, commentedGUIfilters, bDebug, i_aadlFile):
     '''Gathers all binaries generated (Ocarina,GUIs,Python,PeekPoke,etc) and moves them under .../binaries'''
     g_stageLog.info("Gathering all executable output")
     outputDir = g_absOutputDir
     os.chdir(outputDir)
     mkdirIfMissing(outputDir + os.sep + "/binaries")
+    os.chdir("..")
+    if len(vhdlSubsystems)>0:
+        msg = "VHDL bit files built:"
+        g_stageLog.info('-' * len(msg))
+        g_stageLog.info(msg)
+        cmd = "find '%s' -type f -iname '*bit'" % " ".join(vhdlSubsystems.keys())
+        for line in os.popen(cmd).readlines():
+            line = line.strip()
+            targetFolder = outputDir + os.sep + "binaries" + os.sep
+            mysystem('cp "' + line + '" "' + targetFolder + '"')
+            print "        " + ColorFormatter.bold_string(targetFolder + os.path.basename(line))
+    os.chdir(outputDir)
     mysystem("find '%s'/GlueAndBuild -type f -perm /111 ! -iname '*.so' -a ! -iname '*.pyd' | while read ANS ; do file \"$ANS\" | egrep 'ELF|PE32' >/dev/null 2>/dev/null && mv \"$ANS\" \"%s/binaries/\" ; done ; exit 0" % (g_absOutputDir, g_absOutputDir))
     mysystem("find '%s'/ -name binaries -prune -o -type f -perm /111 -iname '*_GUI' -exec sh -c 'F=\"{}\"; D=$(dirname \"$F\"); B=$(basename \"$F\") ; B=\"${B/_GUI/}\"; mv \"$F\" \"%s/binaries/\" ; mv \"$D\"/../../../${B}.pl \"%s/binaries/\" ; mv \"$D\"/../../../${B}_RunAndPlot.sh \"%s/binaries/\" ; ' ';' 2>/dev/null" % (g_absOutputDir, g_absOutputDir, g_absOutputDir, g_absOutputDir))
-    if len(pythonSubsystems)>0:
-        g_stageLog.info("Python bridges built under %s:" % outputDir)
-        for line in os.popen("find '%s' -type f -iname _PythonAccess.so -perm /111" % (g_absOutputDir)).readlines():
-            g_stageLog.info("        Shared library: " + line.strip())
+    # if len(pythonSubsystems)>0:
+    #     msg = "Python bridges built under %s:" % outputDir
+    #     g_stageLog.info('-' * len(msg))
+    #     g_stageLog.info(msg)
+    #     g_stageLog.info("Python bridges built under %s:" % outputDir)
+    #     for line in os.popen("find '%s' -type f -iname PythonAccess.so -perm /111" % (g_absOutputDir)).readlines():
+    #         g_stageLog.info("        Shared library: " + line.strip())
 
+    # g_stageLog.info('-' * 70)
     # Strip binaries:
     if not bDebug:
         for n in g_distributionNodesPlatform.keys():
@@ -1239,7 +1209,7 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, tmpDirName, co
         installPath = getSingleLineFromCmdOutput("taste-config --prefix")
         mysystem('cp "%s"/bin/taste-gnuplot-streams ./driveGnuPlotsStreams.pl' % installPath)
         mysystem('for i in peekpoke.py PeekPoke.glade ; do cp "%s"/share/peekpoke/$i . ; done' % installPath)
-        #mysystem('echo Untaring pyinstaller.speedometer.tar.bz2... ; tar jxf "%s"/share/speedometer/pyinstaller.speedometer.tar.bz2' % installPath)
+        # mysystem('echo Untaring pyinstaller.speedometer.tar.bz2... ; tar jxf "%s"/share/speedometer/pyinstaller.speedometer.tar.bz2' % installPath)
         g_stageLog.info("A PeekPoke subfolder was also created under binaries")
         g_stageLog.info("for easy run-time monitoring and control of inner variables.")
         break
@@ -1251,9 +1221,9 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, tmpDirName, co
     for line in os.popen(
             "find '%s'/binaries -type f -perm /111 | grep -v /PeekPoke/ ; exit 0" % (g_absOutputDir)).readlines():
         line = line.strip()
-        if line.endswith('.so'):
+        if line.endswith('.so') or '/GUI-' in line:
             continue
-        g_stageLog.info("        Binary: " + line.strip())
+        print "        " + ColorFormatter.bold_string(line.strip())
 
     mysystem("rm -rf \"%s\"" % tmpDirName)
     l = len(commentedGUIfilters)
@@ -1271,40 +1241,31 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, tmpDirName, co
             guiFName = guiFName.strip()
             stubs = {
                 'gui': guiFName,
-                'glue': outputDir+'/GlueAndBuild/glue'+guiFName+'/',
-                'target': outputDir+"/binaries/"+guiFName+"-GUI",
-                'GUItarget': outputDir+"/binaries/GUI-"+guiFName,
+                'glue': outputDir + '/GlueAndBuild/glue' + guiFName + '/',
+                'target': outputDir + "/binaries/" + guiFName + "-GUI",
+                'GUItarget': outputDir + "/binaries/GUI-" + guiFName,
                 'IFview': i_aadlFile,
-                'DView': outputDir+"/dataview-uniq.asn"
+                'DView': outputDir + "/dataview-uniq.asn"
             }
             mysystem('mkdir -p "%(target)s"' % stubs)
             mysystem('cp "%(glue)s/"*.py "%(target)s"' % stubs)
             mysystem('cp "%(glue)s/guilayout.ui" "%(target)s"' % stubs)
             mysystem('cp "%(glue)s/python/"*.py "%(target)s"' % stubs)
-            mysystem('echo "errCodes = $($(taste-config --prefix)/share/asn1-editor/errCode.py %(glue)s/python/dataview-uniq.h)" >> "%(target)s/datamodel.py"' % stubs)
+            mysystem('echo "errCodes = $(taste-asn1-errCodes %(glue)s/python/dataview-uniq.h)" >> "%(target)s/datamodel.py"' % stubs)
             mysystem('cp "%(glue)s/python/"*.so "%(target)s"' % stubs)
             mysystem('cp "%(glue)s/python/asn2dataModel/"*.pyd "%(target)s" 2>/dev/null || exit 0' % stubs)
             mysystem('cp "%(glue)s/python/asn2dataModel/"*.so "%(target)s" 2>/dev/null || exit 0' % stubs)
-            mysystem('cp -r "$(taste-config --prefix)/share/speedometer/content" "%(target)s"' % stubs)
-            mysystem('cp -r "$(taste-config --prefix)/share/speedometer/dialcontrol.qml" "%(target)s"' % stubs)
-            mysystem('echo \'A=$(dirname "$0") ; cd "$A/%(gui)s-GUI" && PYTHONPATH=$(taste-config --prefix)/share:$PYTHONPATH $(taste-config --prefix)/share/asn1-editor/gui.py "$@"\' > "%(GUItarget)s" && chmod +x "%(GUItarget)s"' % stubs)
-            mysystem('cp "$(taste-config --prefix)/share/asn1-editor/tasteLogo_white.png" "%(target)s"' % stubs)
+            mysystem('cp "%(glue)s/python/asn2dataModel/"DV_Types.py "%(target)s" 2>/dev/null || exit 0' % stubs)
+#            mysystem('cp -r "$(taste-config --prefix)/share/speedometer/content" "%(target)s"' % stubs)
+#            mysystem('cp -r "$(taste-config --prefix)/share/speedometer/dialcontrol.qml" "%(target)s"' % stubs)
+            mysystem('echo \'A=$(dirname "$0") ; cd "$A/%(gui)s-GUI" && PYTHONPATH=$(taste-config --prefix)/share:$PYTHONPATH taste-gui "$@"\' > "%(GUItarget)s" && chmod +x "%(GUItarget)s"' % stubs)
+#            mysystem('cp "$(taste-config --prefix)/share/asn1-editor/tasteLogo_white.png" "%(target)s"' % stubs)
             mysystem('cp "%(IFview)s" "%(target)s"/InterfaceView.aadl' % stubs)
             mysystem('cp "%(IFview)s" "%(target)s"/InterfaceView.aadl' % stubs)
             mysystem('cp "%(DView)s" "%(target)s"/' % stubs)
 
-#        os.chdir(outputDir)
-#        mysystem("mkdir -p binaries/bb_device")
-#        mysystem("cp bb_device/interface_enum.h binaries/bb_device/")
-#        mysystem("cp $(taste-config --prefix)/share/asn1-editor/InterfaceEnum.i binaries/bb_device/")
-#        mysystem('''\
-#cd binaries/bb_device && \
-#swig -includeall -outdir . -python ./InterfaceEnum.i && \
-#gcc -g -shared -fPIC  `python-config --includes` -o _InterfaceEnum.so InterfaceEnum_wrap.c && \
-#cp _InterfaceEnum.so ../testgui-GUI''')
-
         for line in os.popen("find '%s'/binaries/ -maxdepth 1 -type f -perm /111 -iname 'GUI*' ; exit 0" % (g_absOutputDir)):
-            g_stageLog.info("        Python GUI: " + line.strip())
+            print "        " + ColorFormatter.bold_string(line.strip())
 
 
 def CopyDatabaseFolderIfExisting():
@@ -1360,7 +1321,7 @@ def ParseCommandLineArgs():
     g_stageLog.info("Parsing Command Line Args")
     try:
         args = sys.argv[1:]
-        optlist, args = getopt.gnu_getopt(args, "fgpbrvhjn:o:s:c:i:S:M:C:B:A:G:P:V:e:d:l:w:", ['fast', 'debug', 'no-retry', 'with-polyorb-hi-c', 'with-empty-init', 'with-coverage', 'aadlv2', 'gprof', 'keep-case', 'nodeOptions=', 'output=', 'stack=', 'deploymentView=', 'interfaceView=', 'subSCADE=', 'subSIMULINK=', 'subC=', 'subCPP=', 'subAda=', 'subOG=', 'subRTDS=', 'subVHDL=', 'with-extra-C-code=', 'with-extra-Ada-code=', 'with-extra-lib=', 'with-cv-attributes'])
+        optlist, args = getopt.gnu_getopt(args, "fgpbrvhjn:o:s:c:i:S:M:C:B:A:G:P:V:QC:QA:e:d:l:w:x:", ['fast', 'debug', 'no-retry', 'with-polyorb-hi-c', 'with-empty-init', 'with-coverage', 'aadlv2', 'gprof', 'keep-case', 'nodeOptions=', 'output=', 'stack=', 'deploymentView=', 'interfaceView=', 'subSCADE=', 'subSIMULINK=', 'subC=', 'subCPP=', 'subAda=', 'subOG=', 'subRTDS=', 'subVHDL=', 'subQGenC=', 'subQGenAda=', 'with-extra-C-code=', 'with-extra-Ada-code=', 'with-extra-lib=', 'with-cv-attributes', '--timer='])
     except:
         usage()
     if args != []:
@@ -1380,9 +1341,12 @@ def ParseCommandLineArgs():
     i_aadlFile = ""
     stackOptions = ""
     cvAttributesFile = ""
+    timerResolution = "100"
     scadeSubsystems = {}
     simulinkSubsystems = {}
     cSubsystems = {}
+    qgencSubsystems = {}
+    qgenadaSubsystems = {}
     cppSubsystems = {}
     adaSubsystems = {}
     ogSubsystems = {}
@@ -1422,6 +1386,8 @@ def ParseCommandLineArgs():
             i_aadlFile = arg
         elif opt in ("-w", "--with-cv-attributes"):
             cvAttributesFile = arg
+        elif opt in ("-x", "--timer"):
+            timerResolution = arg
         elif opt in ("-n", "--nodeOptions"):
             subName = arg.split('@')[0]
             onOffLookup = {'on': True, 'off': False}
@@ -1460,6 +1426,11 @@ def ParseCommandLineArgs():
             if len(arg.split(':')) <= 1:
                 panic('SIMULINK subsystems must be specified in the form subsysAadlName:zipFile')
             simulinkSubsystems[simulinkSubName] = arg.split(':')[1]
+        elif opt in ("-QC", "--subQGenC"):
+            qgencSubName = arg.split(':')[0]
+            if len(arg.split(':')) <= 1:
+                panic('QGenC subsystems must be specified in the form subsysAadlName:zipFile')
+            cSubsystems[qgencSubName] = arg.split(':')[1]
         elif opt in ("-C", "--subC"):
             cSubName = arg.split(':')[0]
             if len(arg.split(':')) <= 1:
@@ -1474,6 +1445,12 @@ def ParseCommandLineArgs():
             adaSubName = arg.split(':')[0]
             if len(arg.split(':')) <= 1:
                 panic('Ada subsystems must be specified in the form subsysAadlName:zipFile')
+            adaSubsystems[adaSubName] = arg.split(':')[1]
+        elif opt in ("-QA", "--subQGenAda"):
+            adaSubName = arg.split(':')[0]
+            if len(arg.split(':')) <= 1:
+                panic('QGenAda subsystems must be specified in the form subsysAadlName:zipFile')
+            qgenadaSubsystems[adaSubName] = arg.split(':')[1]
             adaSubsystems[adaSubName] = arg.split(':')[1]
         elif opt in ("-G", "--subOG"):
             ogSubName = arg.split(':')[0]
@@ -1504,7 +1481,7 @@ def ParseCommandLineArgs():
                 extraADAdir = os.path.abspath(extraADAdir)
                 AdaDirectories.setdefault(partition, []).append(extraADAdir)
                 if AdaIncludePath is not None:
-                    AdaIncludePath += ":"+extraADAdir
+                    AdaIncludePath += ":" + extraADAdir
                 else:
                     AdaIncludePath = extraADAdir
                 os.putenv("ADA_INCLUDE_PATH", AdaIncludePath)
@@ -1541,8 +1518,8 @@ disable this check with the -z command line argument or by setting
     mysystem("date", outputDir=g_absOutputDir)
 
     # Removed check for bash, 2011/Apr/8 : all bashisms are gone now (I think)
-    #banner("Checking for valid shell")
-    #mysystem("/bin/sh --version 2>/dev/null | grep bash >/dev/null || { echo Your /bin/sh is not bash ... aborting... ; exit 1 ; }")
+    # banner("Checking for valid shell")
+    # mysystem("/bin/sh --version 2>/dev/null | grep bash >/dev/null || { echo Your /bin/sh is not bash ... aborting... ; exit 1 ; }")
 
     filesMustExist = [depl_aadlFile, i_aadlFile]
     if cvAttributesFile != "":
@@ -1551,10 +1528,11 @@ disable this check with the -z command line argument or by setting
         if not os.path.exists(f):
             panic("'%s' doesn't exist!" % f)
 
-    os.putenv("ASN1SCC", getSingleLineFromCmdOutput("echo $DMT").strip()+"/asn1scc/asn1.exe")
-    os.putenv("ASN2DATAMODEL", getSingleLineFromCmdOutput("echo $DMT").strip()+"/asn2dataModel/asn2dataModel.py")
+    os.putenv("ASN1SCC", getSingleLineFromCmdOutput("echo $DMT").strip() + "/asn1scc/asn1.exe")
 
-    if 0 == len(os.popen("ocarina -V 2>&1 | grep ^Ocarina").readlines()):
+    def spawnOcarinaFailed(v):
+        return 0 == len(os.popen("ocarina " + v + " 2>&1 | grep ^Ocarina").readlines())
+    if all(spawnOcarinaFailed(arg) for arg in ["-V", "--version"]):
         panic("Your PATH has no 'ocarina' !")
 
     # We set LANG to C to avoid issues with LOCALES
@@ -1574,7 +1552,9 @@ disable this check with the -z command line argument or by setting
     return (outputDir, i_aadlFile, depl_aadlFile,
             bDebug, bProfiling, bUseEmptyInitializers, bCoverage, bKeepCase, cvAttributesFile,
             stackOptions, AdaIncludePath, AdaDirectories, CDirectories, ExtraLibraries,
-            scadeSubsystems, simulinkSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, vhdlSubsystems)
+            scadeSubsystems, simulinkSubsystems, qgencSubsystems, qgenadaSubsystems, cSubsystems,
+            cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, vhdlSubsystems,
+            timerResolution)
 
 
 def ReadMD5sums(bDebug):
@@ -1602,7 +1582,7 @@ def CreateDataViews(i_aadlFile, asn1Grammar, acnFile, baseASN, md5s, md5hashesFi
         oldBaseACN = os.path.basename(acnFile)
         if os.path.exists(oldBaseACN):
             os.unlink(oldBaseACN)
-        mysystem("mono \"$DMT\"/asn1scc/asn1.exe -ACND \""+baseASN+"\"")
+        mysystem("mono \"$DMT\"/asn1scc/asn1.exe -ACND \"" + baseASN + "\"")
         acnFile = os.path.abspath(baseASN.replace(".asn", ".acn"))
 
     # Now create the full (non-cropped) ASN.1 grammar, since the DataView AADL we will create below must include ALL types
@@ -1613,8 +1593,8 @@ def CreateDataViews(i_aadlFile, asn1Grammar, acnFile, baseASN, md5s, md5hashesFi
     newGrammar = False
     if asn1Grammar not in md5s or (acnFile not in md5s) or \
             md5s[asn1Grammar]!=md5hash(asn1Grammar) or md5s[acnFile]!=md5hash(acnFile):
-        mysystem("\"$DMT/asn2aadlPlus/asn2aadlPlus.py\" -acn \"" + acnFile + "\" \"" + asn1Grammar + "\" D_view.aadl")
-        md = open(g_absOutputDir+os.sep+md5hashesFilename, 'a')
+        mysystem("asn2aadlPlus -acn \"" + acnFile + "\" \"" + asn1Grammar + "\" D_view.aadl")
+        md = open(g_absOutputDir + os.sep + md5hashesFilename, 'a')
         md.write("%s:%s\n" % (asn1Grammar, md5hash(asn1Grammar)))
         md.write("%s:%s\n" % (acnFile, md5hash(acnFile)))
         md.close()
@@ -1623,11 +1603,11 @@ def CreateDataViews(i_aadlFile, asn1Grammar, acnFile, baseASN, md5s, md5hashesFi
         print "No need to rebuild AADLv1 DataView"
         sys.stdout.flush()
 
-    if asn1Grammar+"_aadlv2" not in md5s or (acnFile not in md5s) or \
-            md5s[asn1Grammar+"_aadlv2"]!=md5hash(asn1Grammar) or md5s[acnFile]!=md5hash(acnFile):
-        mysystem("\"$DMT/asn2aadlPlus/asn2aadlPlus.py\" -aadlv2  -acn \"" + acnFile + "\" \"" + asn1Grammar + "\" D_view_aadlv2.aadl")
-        md = open(g_absOutputDir+os.sep+md5hashesFilename, 'a')
-        md.write("%s:%s\n" % (asn1Grammar+"_aadlv2", md5hash(asn1Grammar)))
+    if asn1Grammar + "_aadlv2" not in md5s or (acnFile not in md5s) or \
+            md5s[asn1Grammar + "_aadlv2"]!=md5hash(asn1Grammar) or md5s[acnFile]!=md5hash(acnFile):
+        mysystem("asn2aadlPlus -aadlv2  -acn \"" + acnFile + "\" \"" + asn1Grammar + "\" D_view_aadlv2.aadl")
+        md = open(g_absOutputDir + os.sep + md5hashesFilename, 'a')
+        md.write("%s:%s\n" % (asn1Grammar + "_aadlv2", md5hash(asn1Grammar)))
         md.write("%s:%s\n" % (acnFile, md5hash(acnFile)))
         md.close()
     else:
@@ -1656,20 +1636,18 @@ def InvokeASN1Compiler(asn1Grammar, baseASN, acnFile, baseACN, isNewGrammar, bCo
     # Invoke compiler
     if isNewGrammar:
         if bCoverage:
-            mysystem("mono \"$DMT\"/asn1scc/asn1.exe -c -uPER -typePrefix asn1Scc -noInit -noChecks -wordSize 8 -ACN \""+baseACN+"\" \""+baseASN+"\"")
+            mysystem("mono \"$DMT\"/asn1scc/asn1.exe -c -uPER -typePrefix asn1Scc -noInit -noChecks -wordSize 8 -ACN \"" + baseACN + "\" \"" + baseASN + "\"")
         else:
-            mysystem("mono \"$DMT\"/asn1scc/asn1.exe -c -uPER -typePrefix asn1Scc -wordSize 8 -ACN \""+baseACN+"\" \"" + baseASN+"\"")
+            mysystem("mono \"$DMT\"/asn1scc/asn1.exe -c -uPER -typePrefix asn1Scc -wordSize 8 -ACN \"" + baseACN + "\" \"" + baseASN + "\"")
     else:
         print "No need to reinvoke the ASN.1 compiler"
         sys.stdout.flush()
 
     # Create message printers, for use when displaying inner messages with MSCs
-    msgPrinter = getSingleLineFromCmdOutput("echo $DMT").strip()+"/asn2dataModel/msgPrinter.py"
-    mysystem('"'+msgPrinter+'" "' + baseASN + '"')
+    mysystem('msgPrinter "' + baseASN + '"')
 
     # Create message printers for ASN.1 variables, for use when sending messages for MSCs
-    msgPrinter = getSingleLineFromCmdOutput("echo $DMT").strip()+"/asn2dataModel/msgPrinterASN1.py"
-    mysystem('"'+msgPrinter+'" "' + baseASN + '"')
+    mysystem('msgPrinterASN1 "' + baseASN + '"')
 
     os.chdir('../')
 
@@ -1732,7 +1710,7 @@ def UnzipSimulinkCode(simulinkSubsystems):
             bUseSimulinkMakefiles[baseDir] = [True, makefiles[0], ""]
             shutil.copy(makefiles[0], makefiles[0] + ".original")
             f = open(makefiles[0], "w")
-            for line in open(makefiles[0]+".original").readlines():
+            for line in open(makefiles[0] + ".original").readlines():
                 line = re.sub(r'(:.*?)(\w+\.tmw)', '\\1', line)
                 buildargs = re.match(pattern1, line)
                 if buildargs:
@@ -1797,15 +1775,15 @@ def UnzipAdaCode(adaSubsystems, AdaIncludePath):
             for name in files:
                 if name.lower().endswith(".adb") or name.lower().endswith(".ads"):
                     if 0 != len([c for c in name if c.isupper()]):
-                        #panic("Ada user code must be in lower case filenames! (%s)" % name)
+                        # panic("Ada user code must be in lower case filenames! (%s)" % name)
                         os.rename(root + os.sep + name, root + os.sep + name.lower())
         mysystem("find \"%s\"/ ! -type d -exec chmod -x '{}' ';'" % baseDir)
         mysystem("find \"%s\"/ -exec touch '{}' ';'" % baseDir)
         mysystem("find \"%s\"/ -type f -iname '*.o' -exec rm -f '{}' ';'" % baseDir)
         if AdaIncludePath is not None:
-            AdaIncludePath += ":"+functionalCodeDir+os.sep+baseDir
+            AdaIncludePath += ":" + functionalCodeDir + os.sep + baseDir
         else:
-            AdaIncludePath = functionalCodeDir+os.sep+baseDir
+            AdaIncludePath = functionalCodeDir + os.sep + baseDir
         os.putenv("ADA_INCLUDE_PATH", AdaIncludePath)
         os.chdir("..")
     return AdaIncludePath
@@ -1842,7 +1820,7 @@ def DetectAdaPackages(adaSubsystems, asn1Grammar):
     return uniqueSetOfAdaPackages
 
 
-def InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, stackOptions, cvAttributesFile):
+def InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, stackOptions, cvAttributesFile, timerResolution):
     '''Invokes the buildsupport code generator that creates the PI/RI bridges'''
     g_stageLog.info("Invoking BuildSupport")
     caseHandling = " --keep-case " if bKeepCase else ""
@@ -1858,35 +1836,29 @@ def InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, stackOption
     converterFlag = ""
     if not any('Taste::version' in x for x in open(depl_aadlFile).readlines()):
         converterFlag = " --future "
+    timerOption = " -x " + timerResolution + " "
     if g_bPolyORB_HI_C:
-        mysystem('"buildsupport" ' + converterFlag + dbgOption + stackOptions + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" ocarina_components.aadl ' + " -d " + dv + " --polyorb-hi-c --smp2 " + ellidissLibs)
+        mysystem('"buildsupport" ' + timerOption + converterFlag + dbgOption + stackOptions + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" ocarina_components.aadl ' + " -d " + dv + " --polyorb-hi-c --smp2 " + ellidissLibs)
     else:
-        mysystem('"buildsupport" ' + converterFlag + dbgOption + stackOptions + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" ocarina_components.aadl ' + " -d " + dv + " --smp2 " + ellidissLibs)
+        mysystem('"buildsupport" ' + timerOption + converterFlag + dbgOption + stackOptions + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" ocarina_components.aadl ' + " -d " + dv + " --smp2 " + ellidissLibs)
     if cvAttributesFile != "":
-        #processList = ['ConcurrencyView/process.aadl']
+        # processList = ['ConcurrencyView/process.aadl']
         processList = glob.glob("ConcurrencyView/*_Thread.aadl")
-        #processList.append(os.popen("ocarina-config --resources").readlines()[0].strip() + "/AADLv2/ocarina_components.aadl")
+        # processList.append(os.popen("ocarina-config --resources").readlines()[0].strip() + "/AADLv2/ocarina_components.aadl")
         g_stageLog.info("Updating thread priorities, stack sizes, and phases using " + os.path.basename(cvAttributesFile) + " as input")
         mysystem(
             "TASTE-CV --edit-aadl " +
-            ",".join('"'+x+'"' for x in processList) +
+            ",".join('"' + x + '"' for x in processList) +
             " --update-properties " +
             '"' + cvAttributesFile + '" --show false')
 
 
 def AdaSpecialHandling(AdaIncludePath, adaSubsystems):
     '''Adds the backdoor APIs requested by TERMA, and fixes ADA_INCLUDE_PATH'''
-    g_stageLog.info("Special handling of Ada code [TERMA request]")
-    if AdaIncludePath is not None:
-        AdaIncludePath += ":"+os.path.abspath("."+os.sep+"Backdoor")
-    else:
-        AdaIncludePath = os.path.abspath("."+os.sep+"Backdoor")
-    os.putenv("ADA_INCLUDE_PATH", AdaIncludePath)
-
     # Prepare Ada subsystems for ADA_INCLUDE_PATH based compilation (gnatmake -x)
     for baseDir in adaSubsystems.keys():
         os.chdir(baseDir)
-        mysystem("rm \"" + baseDir + ".adb\"")
+        mysystem("rm -f \"" + baseDir + ".adb\"")
         for x in os.listdir("."):
             if x.endswith('.ads') or x.endswith('.adb'):
                 mysystem("mv \"%s\" \"%s\"" % (x, baseDir))
@@ -1898,9 +1870,9 @@ def AdaSpecialHandling(AdaIncludePath, adaSubsystems):
         if not maybeDir.startswith("fv_") and not maybeDir.startswith("vt_"):
             continue
         if AdaIncludePath is not None:
-            AdaIncludePath += ":"+os.path.abspath("."+os.sep+maybeDir)
+            AdaIncludePath += ":" + os.path.abspath("." + os.sep + maybeDir)
         else:
-            AdaIncludePath = os.path.abspath("."+os.sep+maybeDir)
+            AdaIncludePath = os.path.abspath("." + os.sep + maybeDir)
         os.putenv("ADA_INCLUDE_PATH", AdaIncludePath)
     return AdaIncludePath
 
@@ -1932,7 +1904,7 @@ def ParsePartitionInformation():
             # (from ticket 311)
             makefilename = "/tmp/Makefile" + str(os.getpid())
             f = open(makefilename, "w")
-            f.write('include GlueAndBuild/deploymentview_final/'+partitionName+'/Makefile\n')
+            f.write('include GlueAndBuild/deploymentview_final/' + partitionName + '/Makefile\n')
             f.write('\n')
             f.write('printCC:\n')
             f.write('\t@echo $(CC)\n\n')
@@ -1948,7 +1920,7 @@ def ParsePartitionInformation():
                 else:
                     prefix = re.sub(r'gcc$', '', cc)
             except:
-                panic("Failed to detect a proper compiler for "+partitionName)
+                panic("Failed to detect a proper compiler for " + partitionName)
             cf = getSingleLineFromCmdOutput("make -s -f " + makefilename + " printCflags 2>&1")
             cf = cf.replace("-DRTEMS_PURE", "")
             ld = getSingleLineFromCmdOutput("make -s -f " + makefilename + " printLdflags 2>&1")
@@ -1995,7 +1967,7 @@ def DetectGUIsubSystems(AdaIncludePath):
             panic("'%s' appears to contain a GUI, but no 'mini_cv.aadl' is inside..." % baseDir)
         guiSubsystems.append(baseDir)
         if AdaIncludePath is not None:
-            AdaIncludePath += ":"+os.path.abspath(baseDir)
+            AdaIncludePath += ":" + os.path.abspath(baseDir)
         else:
             AdaIncludePath = os.path.abspath(baseDir)
         os.putenv("ADA_INCLUDE_PATH", AdaIncludePath)
@@ -2023,29 +1995,14 @@ def InvokeObjectGeodeGenerator(ogSubsystems):
         os.chdir(baseDir)
         if len(ogSubsystems[baseDir]) == 0:
             panic("At least one .pr file must be specified! (%s)" % str(baseDir))
-#       if baseDir[0].lower().endswith(".zip"):
-#           # This is an ObjectGeode zip
-#           mysystem("unzip -o \"" + baseDir[0] + "\"")
-#           if not os.path.isdir("ext"):
-#               panic("Zip file '%s' must contain a directory 'ext' with the OG generated code\n" % baseDir[0])
-#           sdl = [x for x in os.listdir(".") if x.endswith(".pr")]
-#           if len(sdl) == 0:
-#               panic("Zip file '%s' does not contain a .pr file in the root directory" % baseDir[0])
-#           mysystem("cp \"$DMT\"/OG/g2_*.h \"$DMT\"/OG/g2_*.c ext/")
-#           #os.system('wine "$DMT/OG/build_SDL_glue.exe" "' + sdl[0] + '"')
-#           os.system('"$DMT/OG/buildsupport" -gw -glue "' + sdl[0] + '"')
-#           mysystem("cp *.[ch] ext/")
-#           mysystem("cp \"$DMT\"/OG/sdl_main.c ext/")
-#           mysystem("cp \"$DMT\"/OG/g2_btstr.c ext/")
-#           mysystem("rm -f ext/n_*.c")
         mkdirIfMissing("ext")
         os.chdir("ext")
         for f in ogSubsystems[baseDir]:
-            mysystem("cp \""+f+"\" .")
-        mysystem("wine \"$DMT\\OG\\sdl2c.exe\" " + " ".join(['"'+os.path.basename(x)+'"' for x in ogSubsystems[baseDir]]) + " -ts -info -parse")
+            mysystem("cp \"" + f + "\" .")
+        mysystem("wine \"$DMT\\OG\\sdl2c.exe\" " + " ".join(['"' + os.path.basename(x) + '"' for x in ogSubsystems[baseDir]]) + " -ts -info -parse")
         mysystem("cp \"$DMT\"/OG/g2_*.h  \"$DMT\"/OG/g2_*.c  .")
         os.chdir("..")  # out of ext/
-        #os.system('wine "$DMT/OG/build_SDL_glue.exe" ' + ' '.join(['"ext\\'+os.path.basename(x)+'"' for x in baseDir]))
+        # os.system('wine "$DMT/OG/build_SDL_glue.exe" ' + ' '.join(['"ext\\'+os.path.basename(x)+'"' for x in baseDir]))
         mysystem("cp *.[ch] ext/")
         mysystem("cp \"$DMT\"/OG/sdl_main.c ext/")
         mysystem("cp \"$DMT\"/OG/g2_btstr.c ext/")
@@ -2066,11 +2023,7 @@ def CreateAndCompileGlue(
     mkdirIfMissing("GlueAndBuild")
     os.chdir("GlueAndBuild")
     mysystem("cp \"" + asn1Grammar + "\" .")
-#    ocarina_marshallers = open('asn1_marshallers.aadl.new', 'w')
-#    ocarina_marshallers.write('package ASN1\npublic\n')
-#    ocarina_marshallers.write('with dataview;\n\n')
 
-    #TheInitializationOfTheHeapSourceFile = ""
     def InvokeAadl2GlueCandCompile(baseDir, lock):
         # With AADLv2, we may have multi-platform builds
         if (baseDir in g_distributionNodesPlatform.keys()):
@@ -2083,20 +2036,18 @@ def CreateAndCompileGlue(
         sys.stdout.flush()
         lock.release()
 
-        #mysystem("\"$DMT\"/aadl2glueC/aadl2glueC -o \"glue" + baseDir + "\" ../D_view.aadl \"../" + baseDir + "/" + baseDir + "_cv.aadl\"")
-
         absDview = os.path.abspath('../D_view.aadl')
-        absMinicv = os.path.abspath('../'+baseDir+'/mini_cv.aadl')
+        absMinicv = os.path.abspath('../' + baseDir + '/mini_cv.aadl')
+        if os.getenv("ZESTSC1") is not None:
+            vhdlIncludes = "-I ~/work/Xilinx/ZestSC1/Inc/ "
+        else:
+            vhdlIncludes = " "
         if absDview not in md5s or md5s[absDview] != md5hash(absDview) or absMinicv not in md5s or md5s[absMinicv] != md5hash(absMinicv):
-            mysystem("\"$DMT\"/aadl2glueC/aadl2glueC.py -o \"glue" + baseDir + "\" ../D_view.aadl \"../" + baseDir + "/mini_cv.aadl\"")
+            mysystem("aadl2glueC -o \"glue" + baseDir + "\" ../D_view.aadl \"../" + baseDir + "/mini_cv.aadl\"")
 
-            #mysystem("cp \"$DMT\"/asn2aadlPlus/privateHeap/malloc.c \"glue"+baseDir+"\"")
-            #mysystem("cp \"$DMT\"/asn2aadlPlus/privateHeap/staticMoreCore.[ch] \"glue"+baseDir+"\"")
-            #if 0 != os.stat('glue'+baseDir+'/Initialization.c')[stat.ST_SIZE]:
-            #    TheInitializationOfTheHeapSourceFile = 'glue'+baseDir+'/Initialization.c'
-            if 0 == len([x for x in os.listdir("glue"+baseDir) if x.endswith(".c") or x.endswith(".h")]):
+            if 0 == len([x for x in os.listdir("glue" + baseDir) if x.endswith(".c") or x.endswith(".h")]):
                 return
-            os.chdir("glue"+baseDir)
+            os.chdir("glue" + baseDir)
             # Before you compile the glue, use the detected Simulink version to "hack"
             # the difference between RTW7 and RTW6 in the initialization
             if baseDir in simulinkSubsystems.keys():
@@ -2112,17 +2063,18 @@ def CreateAndCompileGlue(
                 # so look at the header files...
                 mysystem('LINES=`grep "_step.*int_T.*tid" ../../"%s"/"%s"/*h  2>/dev/null | wc -l` ; if [ $LINES -eq 1 ] ; then for i in *.c ; do cat "$i" | sed "s,_step(),_step(0)," > a_temp_name && mv a_temp_name "$i" ; done ; fi ; exit 0' % (baseDir, baseDir))
                 mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s *.c" % (
-                    cflagsSoFar+CalculateCFLAGS(baseDir, withPOHIC=False)+CalculateUserCodeOnlyCFLAGS(baseDir),
+                    cflagsSoFar + CalculateCFLAGS(baseDir, withPOHIC=False) + CalculateUserCodeOnlyCFLAGS(baseDir),
                     bUseSimulinkMakefiles[baseDir][2],
                     scadeIncludes, simulinkIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes))
             else:
-                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s *.c" % (
-                    cflagsSoFar+CalculateCFLAGS(baseDir, withPOHIC=False)+CalculateUserCodeOnlyCFLAGS(baseDir),
-                    scadeIncludes, simulinkIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes))
+                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s *.c" % (
+                    cflagsSoFar + CalculateCFLAGS(baseDir, withPOHIC=False) + CalculateUserCodeOnlyCFLAGS(baseDir),
+                    scadeIncludes, simulinkIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes,
+                    vhdlIncludes))
             os.chdir("..")
 
             lock.acquire()
-            md = open(g_absOutputDir+os.sep+md5hashesFilename, 'a')
+            md = open(g_absOutputDir + os.sep + md5hashesFilename, 'a')
             for i in [absDview, absMinicv]:
                 md.write("%s:%s\n" % (i, md5hash(i)))
             md.close()
@@ -2132,7 +2084,7 @@ def CreateAndCompileGlue(
             print "No need to rebuild glue for", baseDir
             sys.stdout.flush()
             lock.release()
-            os.chdir("glue"+baseDir)
+            os.chdir("glue" + baseDir)
             if baseDir in simulinkSubsystems.keys():
                 # Learn about Simulink TASTE-Directives, because the glue compilation may depend on them
                 curDir = os.path.abspath(os.getcwd())
@@ -2140,34 +2092,15 @@ def CreateAndCompileGlue(
                 CheckDirectives(baseDir)
                 os.chdir(curDir)
                 mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s *.c" % (
-                    cflagsSoFar+CalculateCFLAGS(baseDir, withPOHIC=False)+CalculateUserCodeOnlyCFLAGS(baseDir),
+                    cflagsSoFar + CalculateCFLAGS(baseDir, withPOHIC=False) + CalculateUserCodeOnlyCFLAGS(baseDir),
                     bUseSimulinkMakefiles[baseDir][2],
                     scadeIncludes, simulinkIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes))
             else:
-                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s *.c" % (
-                    cflagsSoFar+CalculateCFLAGS(baseDir, withPOHIC=False)+CalculateUserCodeOnlyCFLAGS(baseDir),
-                    scadeIncludes, simulinkIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes))
+                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s *.c" % (
+                    cflagsSoFar + CalculateCFLAGS(baseDir, withPOHIC=False) + CalculateUserCodeOnlyCFLAGS(baseDir),
+                    scadeIncludes, simulinkIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes,
+                    vhdlIncludes))
             os.chdir("..")
-#       try:
-#           for line in open('glue' + baseDir + '/asn1_marshallers.aadl','r'):
-#               if not line.startswith('package ASN1') and not line.startswith('public') and not line.startswith('end ASN1;'):
-#                   ocarina_marshallers.write(line)
-#       except:
-#           pass
-#
-#    ocarina_marshallers.write('end ASN1;');
-#    ocarina_marshallers.close()
-#
-#    if not os.path.exists('asn1_marshallers.aadl') or md5hash('asn1_marshallers.aadl.new')!=md5hash('asn1_marshallers.aadl'):
-#       mysystem("mv asn1_marshallers.aadl.new asn1_marshallers.aadl")
-#
-#    # here: we have to check if asn1_marshallers.aadl contains useful data. If not we will not include it in the main.aadl file (otherwise, BOOM).
-#    # (Added by MP 03/12/2008)
-#    if os.path.getsize('asn1_marshallers.aadl')>30:
-#        tmpAsn1marshallers = ", \"asn1_marshallers.aadl\""
-#    else :
-#        tmpAsn1marshallers = ""
-#
 
     lock = multiprocessing.Lock()
     listOfAadl2GluecProcesses = []
@@ -2221,22 +2154,22 @@ def InvokeOcarina(i_aadlFile, depl_aadlFile, md5s, md5hashesFilename, wrappers):
 #    mysystem("\"$GNATGCC\" -c -g n1*ads")
 #    mysystem("\"$GNATGCC\" -c -g system_time.ads")
     shutil.copy("../D_view_aadlv2.aadl", "./D_view.aadl")
-    #NEW NATIVE GUI allows direct support for AADLv2
-    #shutil.copy(depl_aadlFile_aadlv2, ".")
+    # NEW NATIVE GUI allows direct support for AADLv2
+    # shutil.copy(depl_aadlFile_aadlv2, ".")
     shutil.copy(depl_aadlFile, ".")
     for x in wrappers:
-        mysystem("cp -u \""+x+"\" . 2>/dev/null || exit 0")
+        mysystem("cp -u \"" + x + "\" . 2>/dev/null || exit 0")
     # Ocarana_config::Root_System_name => "rootsystemname";
     #
     # 2013/09/05: Maxime says this is not necessary, it is hardcoded
-    #rootSystemName = getSingleLineFromCmdOutput("tail -1 ../ConcurrencyView/process.aadl")
-    #rootSystemName = rootSystemName.strip()
-    #rootSystemName = rootSystemName[3:]  # lose the '-' '-' 'space'
+    # rootSystemName = getSingleLineFromCmdOutput("tail -1 ../ConcurrencyView/process.aadl")
+    # rootSystemName = rootSystemName.strip()
+    # rootSystemName = rootSystemName[3:]  # lose the '-' '-' 'space'
 
     rootSystemName = 'deploymentview.final'
     mainaadl = open('main.aadl.new', 'w')
     for i in os.listdir("../ConcurrencyView/"):
-        shutil.copy("../ConcurrencyView/"+i, ".")
+        shutil.copy("../ConcurrencyView/" + i, ".")
 
     shutil.copy(i_aadlFile, ".")
     installPath = getSingleLineFromCmdOutput("taste-config --prefix")
@@ -2268,12 +2201,12 @@ end ASSERT_System;
 system implementation ASSERT_System.Impl
 end ASSERT_System.Impl;
 ''' %
-                   #NEW NATIVE GUI allows direct support for AADLv2
-                   #(  os.path.basename(depl_aadlFile_aadlv2),
+                   # NEW NATIVE GUI allows direct support for AADLv2
+                   # (  os.path.basename(depl_aadlFile_aadlv2),
                    (
-                       '"'+os.path.basename(i_aadlFile)+'",',
+                       '"' + os.path.basename(i_aadlFile) + '",',
                        os.path.basename(depl_aadlFile),
-                       ", ".join(["\""+x+"\"" for x in os.listdir("../ConcurrencyView/") if x != "nodes"]),
+                       ", ".join(["\"" + x + "\"" for x in os.listdir("../ConcurrencyView/") if x != "nodes"]),
                        g_bPolyORB_HI_C and "polyorb_hi_c" or "polyorb_hi_ada",
                        "2",
                        " ",
@@ -2285,11 +2218,11 @@ end ASSERT_System.Impl;
         mysystem("mv main.aadl.new main.aadl")
 
     # Check to see if the md5 signatures of the source AADL files are the same - if they are, don't invoke ocarina!
-    #NEW NATIVE GUI allows direct support for AADLv2
-    #aadlSources = [depl_aadlFile_aadlv2, os.path.abspath('D_view.aadl')]
+    # NEW NATIVE GUI allows direct support for AADLv2
+    # aadlSources = [depl_aadlFile_aadlv2, os.path.abspath('D_view.aadl')]
     aadlSources = [depl_aadlFile, os.path.abspath('D_view.aadl')]
 #    if tmpAsn1marshallers!="": aadlSources.append( os.path.abspath('asn1_marshallers.aadl') )
-    aadlSources.extend([os.path.abspath("../ConcurrencyView/"+x) for x in os.listdir("../ConcurrencyView/") if x != "nodes"])
+    aadlSources.extend([os.path.abspath("../ConcurrencyView/" + x) for x in os.listdir("../ConcurrencyView/") if x != "nodes"])
     invokeOcarina = False
     for i in aadlSources:
         if i not in md5s.keys() or md5s[i]!=md5hash(i):
@@ -2301,10 +2234,10 @@ end ASSERT_System.Impl;
     mysystem("cp $(ocarina-config --resources)/AADLv2/ocarina_components.aadl .")
     mysystem('cleanupDV.pl "%s" > a_temp_name && mv a_temp_name "%s"' % (os.path.basename(depl_aadlFile), os.path.basename(depl_aadlFile)))
     if invokeOcarina:
-        #banner("Invoking ocarina")
+        # banner("Invoking ocarina")
         mysystem("find . -type d \( -iname 'glue*' -prune -o -exec rm -rf '{}' ';' \) 2>/dev/null || exit 0")
         mysystem("ocarina -x main.aadl")
-        md = open(g_absOutputDir+os.sep+md5hashesFilename, 'a')
+        md = open(g_absOutputDir + os.sep + md5hashesFilename, 'a')
         for i in aadlSources:
             md.write("%s:%s\n" % (i, md5hash(i)))
         md.close()
@@ -2325,10 +2258,18 @@ def DetectPythonSubsystems():
 
 
 def CreateIncludePaths(
-        scadeSubsystems, simulinkSubsystems, cSubsystems, cppSubsystems, adaSubsystems,
-        rtdsSubsystems, guiSubsystems, cyclicSubsystems):
+        scadeSubsystems, simulinkSubsystems, qgencSubsystems, cSubsystems, cppSubsystems, qgenadaSubsystems,
+        adaSubsystems, rtdsSubsystems, guiSubsystems, cyclicSubsystems, AdaIncludePath):
     '''Creates the include flags (-I ...) for all subsystems'''
     g_stageLog.info("Creating include paths directive")
+
+    QGenAdaInUse = False
+    # qgenadaIncludes = ""
+    adaIncludes = ""
+    for baseDir in qgenadaSubsystems.keys():
+        QGenAdaInUse = True
+        break
+
     scadeIncludes = ""
     for baseDir in scadeSubsystems.keys():
         if os.path.isdir(baseDir + os.sep + baseDir):
@@ -2340,9 +2281,15 @@ def CreateIncludePaths(
             simulinkIncludes += ' -I "../../' + baseDir + os.sep + baseDir + os.sep + '"'
 
     cIncludes = ""
+    cur_dir = os.path.abspath(os.getcwd())
     for baseDir in cSubsystems.keys() + cppSubsystems.keys():
         if os.path.isdir(baseDir + os.sep + baseDir):
             cIncludes += ' -I "../../' + baseDir + os.sep + baseDir + os.sep + '"'
+            if QGenAdaInUse:
+                AdaIncludePath += ':' + cur_dir + os.sep + baseDir + os.sep + baseDir
+    for baseDir in qgencSubsystems.keys():
+        if os.path.isdir(baseDir):
+            cIncludes += ' -I "../../../' + baseDir + os.sep + '"'
 
     rtdsIncludes = ""
     for baseDir in rtdsSubsystems.keys():
@@ -2366,7 +2313,7 @@ def CreateIncludePaths(
         if os.path.isdir(baseDir + os.sep + baseDir):
             cyclicIncludes += ' -I "../../' + baseDir + os.sep + '"'
     return (scadeIncludes, simulinkIncludes, cIncludes,
-            rtdsIncludes, guiIncludes, adaIncludes, cyclicIncludes)
+            rtdsIncludes, guiIncludes, adaIncludes, cyclicIncludes, AdaIncludePath)
 
 
 def CheckIfInterfaceViewNeedsUpgrading(i_aadlFile):
@@ -2390,7 +2337,9 @@ def main():
     outputDir, i_aadlFile, depl_aadlFile, \
         bDebug, bProfiling, bUseEmptyInitializers, bCoverage, bKeepCase, cvAttributesFile, \
         stackOptions, AdaIncludePath, AdaDirectories, CDirectories, ExtraLibraries, \
-        scadeSubsystems, simulinkSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, vhdlSubsystems = cmdLineInformation
+        scadeSubsystems, simulinkSubsystems, qgencSubsystems, qgenadaSubsystems, cSubsystems, \
+        cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, vhdlSubsystems, \
+        timerResolution = cmdLineInformation
 
     os.putenv("WORKDIR", os.path.abspath(outputDir))
 
@@ -2400,7 +2349,7 @@ def main():
         cvAttributesFile = os.path.abspath(cvAttributesFile)
 
     # Not operational yet, the converter hangs...
-    #ApplyPatchForDeploymentViewNeededByOcarinaForNewEllidissTools(depl_aadlFile)
+    # ApplyPatchForDeploymentViewNeededByOcarinaForNewEllidissTools(depl_aadlFile)
 
     CheckIfInterfaceViewNeedsUpgrading(i_aadlFile)
 
@@ -2449,7 +2398,7 @@ def main():
     uniqueSetOfAdaPackages = DetectAdaPackages(adaSubsystems, asn1Grammar)
     UnzipRTDS(rtdsSubsystems)
 
-    InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, stackOptions, cvAttributesFile)
+    InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, stackOptions, cvAttributesFile, timerResolution)
 
     wrappers = FindWrappers()
     InvokeOcarina(i_aadlFile, depl_aadlFile, md5s, md5hashesFilename, wrappers)
@@ -2461,10 +2410,10 @@ def main():
 
     InvokeObjectGeodeGenerator(ogSubsystems)
 
-    scadeIncludes, simulinkIncludes, cIncludes, rtdsIncludes, guiIncludes, adaIncludes, cyclicIncludes = \
+    scadeIncludes, simulinkIncludes, cIncludes, rtdsIncludes, guiIncludes, adaIncludes, cyclicIncludes, AdaIncludePath = \
         CreateIncludePaths(
-            scadeSubsystems, simulinkSubsystems, cSubsystems, cppSubsystems, adaSubsystems,
-            rtdsSubsystems, guiSubsystems, cyclicSubsystems)
+            scadeSubsystems, simulinkSubsystems, qgencSubsystems, cSubsystems, cppSubsystems, qgenadaSubsystems,
+            adaSubsystems, rtdsSubsystems, guiSubsystems, cyclicSubsystems, AdaIncludePath)
 
     CreateAndCompileGlue(
         asn1Grammar,
@@ -2510,7 +2459,7 @@ def main():
         cflagsSoFar, CDirectories, AdaDirectories, AdaIncludePath, ExtraLibraries,
         bDebug, bUseEmptyInitializers, bCoverage, bProfiling)
 
-    GatherAllExecutableOutput(outputDir, pythonSubsystems, tmpDirName, commentedGUIfilters, bDebug, i_aadlFile)
+    GatherAllExecutableOutput(outputDir, pythonSubsystems, vhdlSubsystems, tmpDirName, commentedGUIfilters, bDebug, i_aadlFile)
     CopyDatabaseFolderIfExisting()
 
 if __name__ == "__main__":
