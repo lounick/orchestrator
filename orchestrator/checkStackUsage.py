@@ -3,7 +3,7 @@
 Utility to detect recursive calls and calculate total stack usage per function
 (via following the call graph). Works for x86 and SPARC/Leon binaries.
 
-(C) 2011 Thanassis Tsiodras
+Published under the GPL, (C) 2011 Thanassis Tsiodras
 Suggestions/comments: ttsiodras@gmail.com
 """
 
