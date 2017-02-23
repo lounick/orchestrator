@@ -1270,7 +1270,7 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, vhdlSubsystems
             mysystem('cp "%(IFview)s" "%(target)s"/InterfaceView.aadl' % stubs)
             mysystem('cp "%(DView)s" "%(target)s"/' % stubs)
 
-        for line in os.popen("find '%s'/binaries/ -maxdepth 1 -type f -perm /111 -iname 'GUI*' ; exit 0" % (g_absOutputDir)):
+        for line in os.popen("find '%s'/binaries/ -maxdepth 1 -type f -perm /111 -name 'GUI*' ; exit 0" % (g_absOutputDir)):
             print "        " + ColorFormatter.bold_string(line.strip())
 
 
