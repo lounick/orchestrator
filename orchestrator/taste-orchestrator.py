@@ -307,19 +307,25 @@ def handlePoHiC(functionName):
         if os.path.isdir(prefix + d) and not d.startswith("glue"):
             polyorbActivityHpath = prefix + d
             break
-    for d in os.listdir(polyorbActivityHpath):
-        if os.path.isdir(polyorbActivityHpath + os.sep + d) and d.startswith(functionName):
-            polyorbActivityHpath += os.sep + d
+    # In the past, we were looking for a folder under deploymentview_final
+    # that started with the function name.
+    #
+    # This is not robust...
+
+    # OBSOLETE
+    # for d in os.listdir(polyorbActivityHpath):
+    #     if os.path.isdir(polyorbActivityHpath + os.sep + d) and d.startswith(functionName):
+    #         polyorbActivityHpath += os.sep + d
+    #         break
+    # else:
+
+    # ...so we always check the 'nodes' info to see who is using this function.
+    for partition in g_distributionNodes.keys():
+        if functionName.lower() in [x.lower() for x in g_distributionNodes[partition]]:
+            polyorbActivityHpath += os.sep + partition
             break
     else:
-        # No such directory found under deployment...
-        # Check the 'nodes' info to see who is using this
-        for partition in g_distributionNodes.keys():
-            if functionName.lower() in [x.lower() for x in g_distributionNodes[partition]]:
-                polyorbActivityHpath += os.sep + partition
-                break
-        else:
-            polyorbActivityHpath = ""
+        polyorbActivityHpath = ""
 
     if kind == "PLATFORM_X86_LINUXTASTE":
         extraCdirIncludes += " -I$LINUXTASTE_PATH/output//target/usr/local/include -DPOSIX"
