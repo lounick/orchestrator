@@ -218,7 +218,7 @@ def banner(msg):
 
 def usage():
     '''Shows all available cmd line arguments'''
-    panic("TASTE/ASSERT orchestrator, revision: $Rev: 8102 $\n"
+    panic("TASTE/ASSERT orchestrator, revision: COMMITID\n"
           "Usage: " + os.path.basename(sys.argv[0]) + " <options>\nWhere <options> are:\n\n"
           "-f, --fast\n\tSkip waiting for ENTER between stages\n\n"
           "-g, --debug\n\tEnable debuging options\n\n"
