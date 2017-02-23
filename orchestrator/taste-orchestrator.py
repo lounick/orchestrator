@@ -1338,9 +1338,11 @@ def ParseCommandLineArgs():
     global g_bRetry
     g_bRetry = True  # set by default
     bUseEmptyInitializers = bCoverage = bProfiling = bDebug = bKeepCase = False
-    enableMultiCoreCheck = True
-    if os.getenv("DISABLE_MULTICORE_CHECK") is not None:
-        enableMultiCoreCheck = False
+
+    # Maxime request: never check for multicores anymore, POHI updates fixed the issues.
+    enableMultiCoreCheck = False
+    # if os.getenv("DISABLE_MULTICORE_CHECK") is not None:
+    #     enableMultiCoreCheck = False
 
     outputDir = ""
     depl_aadlFile = ""
