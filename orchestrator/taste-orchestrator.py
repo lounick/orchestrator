@@ -1071,7 +1071,6 @@ def InvokeOcarinaMakefiles(
                         externals += ' "' + getSingleLineFromCmdOutput("echo $DMT").strip() + '/ZestSC1/libZestSC1.a" /lib/i386-linux-gnu/libusb-0.1.so.4'
                     break  # If you meet even one VHDL component for this node, the library was added to externals, no need to check further
 
-            userLDFlags += " -lm "
             userCFlags += mflags(node)
             userLDFlags += mflags(node)
 
@@ -1107,8 +1106,10 @@ def InvokeOcarinaMakefiles(
                 os.putenv("RTEMS_MAKEFILE_PATH", os.environ["RTEMS_MAKEFILE_PATH_NDS"])
             elif platformType.startswith("PLATFORM_GUMSTIX_RTEMS"):
                 os.putenv("RTEMS_MAKEFILE_PATH", os.environ["RTEMS_MAKEFILE_PATH_GUMSTIX"])
-            if "LEON" not in platformType and "RTEMS" not in platformType and "WIN32" not in platformType:
+            if all(x not in platformType for x in ["LEON", "RTEMS", "WIN32", "ARM_CORTEX"]):
                 extra += "-lrt "
+            if "ARM_CORTEX" not in platformType:
+                userLDFlags += " -lm "
             if bCoverage:
                 extra += " -lgcov "
             if platformType in ("PLATFORM_LINUX32",):  # and platform.architecture()[0] == '64bit':
