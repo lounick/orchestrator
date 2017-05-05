@@ -270,8 +270,8 @@ def mflags(node):
         result += " -m64 "
     if kind.startswith("PLATFORM_LEON_RTEMS"):
         result += " -msoft-float "
-    if kind.startswith("PLATFORM_ARM_CORTEX"):
-        result += " -mfloat-abi=hard "
+    # if kind.startswith("PLATFORM_ARM_CORTEX"):
+    #     result += " -mfloat-abi=hard "
     return result
 
 
