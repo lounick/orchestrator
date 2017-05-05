@@ -270,8 +270,8 @@ def mflags(node):
         result += " -m64 "
     if kind.startswith("PLATFORM_LEON_RTEMS"):
         result += " -msoft-float "
-    # if kind.startswith("PLATFORM_ARM_CORTEX"):
-    #     result += " -mfloat-abi=hard "
+    if kind.startswith("PLATFORM_ARM_CORTEX"):
+        result += " -mfloat-abi=hard "
     return result
 
 
@@ -1154,6 +1154,9 @@ def InvokeOcarinaMakefiles(
                 return cmd + " "
             userCFlags = keepOnlyFirstCompilationOption(userCFlags)
             userLDFlags = keepOnlyFirstCompilationOption(userLDFlags)
+            if "ARM_CORTEX" in platformType:
+                userCFlags = userCFlags.replace(" -mfloat-abi=hard ", "")  # Not supported by AdaCore's CertyFlie...
+                userLDFlags = userLDFlags.replace(" -mfloat-abi=hard ", "")  # Not supported by AdaCore's CertyFlie...
             customFlags = (' USER_CFLAGS="${USER_CFLAGS}%s" USER_LDFLAGS="${USER_LDFLAGS}%s"' % (userCFlags, userLDFlags))
             mysystem((cmd % customFlags) + extra + externals + "\" make")
     return AdaIncludePath
