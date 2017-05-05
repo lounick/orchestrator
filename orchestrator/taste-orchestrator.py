@@ -354,6 +354,9 @@ def CalculateCFLAGS(node, withPOHIC=True):
         result += " -mstructure-size-boundary=8 -mcpu=arm9tdmi -mfpu=vfp -mfloat-abi=soft -mthumb-interwork -g "
     if "GUMSTIX" in kind:
         result += " -mstructure-size-boundary=8 -mcpu=xscale -mfpu=vfp -mfloat-abi=soft -g "
+    if "ARM_CORTEX" in kind:
+        result += " -DNDEBUG "  # Not supported by AdaCore's CertyFlie...
+
     for binary, listOfFunctions in g_distributionNodes.items():
         key = re.sub(r'_obj\d+$', '', binary)
         if node == binary or node in listOfFunctions:
