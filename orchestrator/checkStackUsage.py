@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 """
 Utility to detect recursive calls and calculate total stack usage per function
 (via following the call graph). Works for x86 and SPARC/Leon binaries.
@@ -81,13 +81,21 @@ def main():
         sys.exit(1)
     binarySignature = os.popen("file \"%s\"" % sys.argv[1]).readlines()[0]
     x86 = Matcher(r'ELF 32-bit LSB.*80.86')
+    x64  = Matcher(r'ELF 64-bit LSB.*x86-64')
     leon = Matcher(r'ELF 32-bit MSB.*SPARC')
+    arm = Matcher(r'ELF 32-bit LSB.*ARM')
     if x86.search(binarySignature):
         objdump = 'objdump'
         nm = 'nm'
         functionNamePattern = Matcher(r'^(\S+) <([a-zA-Z0-9_]+?)>:')
         callPattern = Matcher(r'^.*call\s+\S+\s+<([a-zA-Z0-9_]+)>')
         stackUsagePattern = Matcher(r'^.*[add|sub]\s+\$(0x\S+),%esp')
+    elif x64.search(binarySignature):
+        objdump = 'objdump'
+        nm = 'nm'
+        functionNamePattern = Matcher(r'^(\S+) <([a-zA-Z0-9_]+?)>:')
+        callPattern = Matcher(r'^.*callq\s+\S+\s+<([a-zA-Z0-9_]+)>')
+        stackUsagePattern = Matcher(r'^.*[add|sub]\s+\$(0x\S+),%rsp')
     elif leon.search(binarySignature):
         objdump = 'sparc-elf-objdump'
         nm = 'sparc-elf-nm'
@@ -95,6 +103,13 @@ def main():
         callPattern = Matcher(r'^.*call\s+\S+\s+<([a-zA-Z0-9_]+)>')
         stackUsagePattern = Matcher(
             r'^.*save.*%sp, (-([0-9]{2}|[3-9])[0-9]{2}), %sp')
+    elif arm.search(binarySignature):
+        objdump = 'arm-eabi-objdump'
+        nm = 'arm-eabi-nm'
+        functionNamePattern = Matcher(r'^(\S+) <([a-zA-Z0-9_]+?)>:')
+        callPattern = Matcher(r'^.*bl\s+\S+\s+<([a-zA-Z0-9_]+)>')
+        stackUsagePattern = Matcher(
+            r'^.*sub.*sp, sp, (#[0-9][0-9]*)')
     else:
         print "Unknown signature:", binarySignature
         sys.exit(1)
@@ -117,11 +132,11 @@ def main():
     sizeOfSymbol[lastSymbol] = 2**31  # allow last .text symbol to roam free
 
     # Parse disassembly to create callgraph (use objdump -d)
-    foundStack = False
     functionName = ""
     stackUsagePerFunction = {}
     callGraph = {}
     insideFunctionBody = False
+    currentFunctionStackSize = 0
 
     offsetPattern = Matcher(r'^([0-9A-Za-z]+):')
     for line in os.popen(objdump + " -d \"" + sys.argv[1] + "\"").readlines():
@@ -157,7 +172,8 @@ def main():
             #            "is not at offset reported by", nm
             #        print hex(offsetOfSymbol[functionName]), hex(offset)
             insideFunctionBody = True
-            foundStack = False
+            foundFirstCall = False
+            stackUsagePerFunction[functionName] = 0
 
         # If we're inside a function body
         # (i.e. offset is not out of symbol size range)
@@ -166,16 +182,15 @@ def main():
             #  8048c0a:       e8 a1 03 00 00       call   8048fb0 <frame_dummy>
             call = callPattern.match(line)
             if functionName != "" and call:
+                foundFirstCall = True
                 calledFunction = call.group(1)
                 callGraph[functionName].add(calledFunction)
 
-            # Check to see if we have the first stack reduction opcode
+            # Check to see if we have a stack reduction opcode
             #  8048bec:       83 ec 04                sub    $0x46,%esp
-            if not foundStack and functionName != "":
+            if functionName != "" and not foundFirstCall:
                 stackMatch = stackUsagePattern.match(line)
                 if stackMatch:
-                    # make sure we dont re-update stackusage for this function
-                    foundStack = True
                     value = stackMatch.group(1)
                     if value.startswith("0x"):
                         # sub    $0x46,%esp
@@ -184,10 +199,13 @@ def main():
                             # unfortunately, GCC may also write:
                             # add    $0xFFFFFF86,%esp
                             value = 4294967296-value
+                    elif value.startswith("#"):
+                        # sub sp, sp, #1024
+                        value = int(value[1:])
                     else:
                         # save  %sp, -104, %sp
                         value = -int(value)
-                    stackUsagePerFunction[functionName] = value
+                    stackUsagePerFunction[functionName] += value
 
     #for fn,v in stackUsagePerFunction.items():
     #   print fn,v
