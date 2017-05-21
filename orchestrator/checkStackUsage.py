@@ -109,7 +109,7 @@ def main():
         functionNamePattern = Matcher(r'^(\S+) <([a-zA-Z0-9_]+?)>:')
         callPattern = Matcher(r'^.*bl\s+\S+\s+<([a-zA-Z0-9_]+)>')
         stackUsagePattern = Matcher(
-            r'^.*sub.*sp, sp, (#[0-9][0-9]*)')
+            r'^.*sub.*sp, (#[0-9][0-9]*)')
     else:
         print "Unknown signature:", binarySignature
         sys.exit(1)
