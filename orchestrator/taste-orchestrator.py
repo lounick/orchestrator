@@ -272,6 +272,9 @@ def mflags(node):
         result += " -msoft-float "
     if kind.startswith("PLATFORM_ARM_CORTEX"):
         result += " -mfloat-abi=hard "
+        # Cortex M4's FPU does not support double precision! if C code uses double,
+        # it must be forced to use float instead:
+        result += " -fshort-double "
     return result
 
 
@@ -1158,8 +1161,10 @@ def InvokeOcarinaMakefiles(
             userCFlags = keepOnlyFirstCompilationOption(userCFlags)
             userLDFlags = keepOnlyFirstCompilationOption(userLDFlags)
             if "ARM_CORTEX" in platformType:
-                userCFlags = userCFlags.replace(" -mfloat-abi=hard ", "")  # Not supported by AdaCore's CertyFlie...
-                userLDFlags = userLDFlags.replace(" -mfloat-abi=hard ", "")  # Not supported by AdaCore's CertyFlie...
+                userCFlags = userCFlags.replace(" -mfloat-abi=hard ", "")  # Not supported when compiling Ada
+                userLDFlags = userLDFlags.replace(" -mfloat-abi=hard ", "")  # Not supported when compiling Ada
+                userCFlags = userCFlags.replace("-fshort-double", "")  # Not supported when compiling Ada
+                userLDFlags = userLDFlags.replace("-fshort-double", "")  # Not supported when compiling Ada
             customFlags = (' USER_CFLAGS="${USER_CFLAGS}%s" USER_LDFLAGS="${USER_LDFLAGS}%s"' % (userCFlags, userLDFlags))
             mysystem((cmd % customFlags) + extra + externals + "\" make")
     return AdaIncludePath
