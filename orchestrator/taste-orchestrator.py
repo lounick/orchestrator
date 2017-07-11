@@ -1189,7 +1189,7 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, vhdlSubsystems
             print "        " + ColorFormatter.bold_string(targetFolder + os.path.basename(line))
     os.chdir(outputDir)
     mysystem("find '%s'/GlueAndBuild -type f -perm /111 ! -iname '*.so' -a ! -iname '*.pyd' | while read ANS ; do file \"$ANS\" | egrep 'ELF|PE32' >/dev/null 2>/dev/null && mv \"$ANS\" \"%s/binaries/\" ; done ; exit 0" % (g_absOutputDir, g_absOutputDir))
-    mysystem("find '%s'/ -name binaries -prune -o -type f -perm /111 -iname '*_GUI' -exec sh -c 'F=\"{}\"; D=$(dirname \"$F\"); B=$(basename \"$F\") ; B=\"${B/_GUI/}\"; mv \"$F\" \"%s/binaries/\" ; mv \"$D\"/../../../${B}.pl \"%s/binaries/\" ; mv \"$D\"/../../../${B}_RunAndPlot.sh \"%s/binaries/\" ; ' ';' 2>/dev/null" % (g_absOutputDir, g_absOutputDir, g_absOutputDir, g_absOutputDir))
+    mysystem("find '%s'/ -name binaries -prune -o -type f -perm /111 -iname '*_GUI' -exec bash -c 'F=\"{}\"; D=$(dirname \"$F\"); B=$(basename \"$F\") ; B=\"${B/_GUI/}\"; mv \"$F\" \"%s/binaries/\" ; mv \"$D\"/../../../${B}.pl \"%s/binaries/\" ; mv \"$D\"/../../../${B}_RunAndPlot.sh \"%s/binaries/\" ; ' ';' 2>/dev/null" % (g_absOutputDir, g_absOutputDir, g_absOutputDir, g_absOutputDir))
     # if len(pythonSubsystems)>0:
     #     msg = "Python bridges built under %s:" % outputDir
     #     g_stageLog.info('-' * len(msg))
