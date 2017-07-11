@@ -1929,11 +1929,11 @@ def ParsePartitionInformation():
             f.write('include GlueAndBuild/deploymentview_final/' + partitionName + '/Makefile\n')
             f.write('\n')
             f.write('printCC:\n')
-            f.write('\t@echo $(CC)\n\n')
+            f.write('\t@$(info $(CC))\n\n')
             f.write('printCflags:\n')
-            f.write('\t@echo $(CFLAGS)\n\n')
+            f.write('\t@$(info $(CFLAGS))\n\n')
             f.write('printLdflags:\n')
-            f.write('\t@echo $(LDFLAGS)\n\n')
+            f.write('\t@$(info $(LDFLAGS))\n\n')
             f.close()
             try:
                 cc = getSingleLineFromCmdOutput("make -s -f " + makefilename + " printCC 2>&1").split()[0]
