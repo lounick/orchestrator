@@ -268,8 +268,21 @@ def mflags(node):
         result += " -m32 "
     if kind == "PLATFORM_LINUX64":
         result += " -m64 "
-    if kind.startswith("PLATFORM_LEON_RTEMS"):
-        result += " -msoft-float "
+    # As explained in the discussion in the RTEMS mailing list...
+    #
+    #     https://lists.rtems.org/pipermail/users/2016-February/029782.html
+    #
+    # ...there is no workaround: if you want to do SPARC FPU things (and we
+    # almost universally do, in all missions now) you can't mix and match RTEMS
+    # compiled with -msoft-float with code compiled without it. The latest
+    # build (under /opt/rtems-4.12) packaged in the TASTE VM is from the
+    # master branch of RTEMS4.12, with enabled SMP; and as recommended by
+    # Embedded Brains in the above discussion, the leon2/leon3/ngmp.cfg config
+    # files have been modified to compile for native FPU.
+    #
+    # if kind.startswith("PLATFORM_LEON_RTEMS"):
+    #     result += " -msoft-float "
+    #
     if kind.startswith("PLATFORM_ARM_CORTEX"):
         result += " -mfloat-abi=hard "
         # Cortex M4's FPU does not support double precision! if C code uses double,
