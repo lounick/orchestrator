@@ -160,6 +160,7 @@ def panic(x):
         x += "\n"
     sys.stderr.write(x)
     g_stageLog.error(g_currentStage)
+    os.system('env > "' + g_absOutputDir + os.sep + 'env.txt"')
     sys.exit(1)
 
 
