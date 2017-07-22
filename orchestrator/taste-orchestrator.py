@@ -160,7 +160,8 @@ def panic(x):
         x += "\n"
     sys.stderr.write(x)
     g_stageLog.error(g_currentStage)
-    os.system('env > "' + g_absOutputDir + os.sep + 'env.txt"')
+    if g_absOutputDir != "":
+        os.system('env > "' + g_absOutputDir + os.sep + 'env.txt"')
     sys.exit(1)
 
 
@@ -175,7 +176,8 @@ def mysystem(x, outputDir=None):
     g_log.flush()
     while os.system(x) != 0:
         # Save the environment that was used for the failed command under OUTPUT_FOLDER/env.txt
-        os.system('env > "' + g_absOutputDir + os.sep + 'env.txt"')
+        if g_absOutputDir != "":
+            os.system('env > "' + g_absOutputDir + os.sep + 'env.txt"')
         if g_bRetry:
             if os.getenv('CLEANUP') is not None:
                 print "Exception in user code:"
