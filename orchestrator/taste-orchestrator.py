@@ -284,7 +284,7 @@ def mflags(node):
     # if kind.startswith("PLATFORM_LEON_RTEMS"):
     #     result += " -msoft-float "
     #
-    if kind.startswith("PLATFORM_ARM_CORTEX"):
+    if kind.startswith("PLATFORM_GNAT_RUNTIME"):
         result += " -mfloat-abi=hard "
         # Cortex M4's FPU does not support double precision! if C code uses double,
         # it must be forced to use float instead:
@@ -371,7 +371,7 @@ def CalculateCFLAGS(node, withPOHIC=True):
         result += " -mstructure-size-boundary=8 -mcpu=arm9tdmi -mfpu=vfp -mfloat-abi=soft -mthumb-interwork -g "
     if "GUMSTIX" in kind:
         result += " -mstructure-size-boundary=8 -mcpu=xscale -mfpu=vfp -mfloat-abi=soft -g "
-    if "ARM_CORTEX" in kind:
+    if "GNAT_RUNTIME" in kind:
         result += " -DNDEBUG "  # Not supported by AdaCore's CertyFlie...
 
     for binary, listOfFunctions in g_distributionNodes.items():
@@ -1128,9 +1128,9 @@ def InvokeOcarinaMakefiles(
                 os.putenv("RTEMS_MAKEFILE_PATH", os.environ["RTEMS_MAKEFILE_PATH_NDS"])
             elif platformType.startswith("PLATFORM_GUMSTIX_RTEMS"):
                 os.putenv("RTEMS_MAKEFILE_PATH", os.environ["RTEMS_MAKEFILE_PATH_GUMSTIX"])
-            if all(x not in platformType for x in ["LEON", "RTEMS", "WIN32", "ARM_CORTEX"]):
+            if all(x not in platformType for x in ["LEON", "RTEMS", "WIN32", "GNAT_RUNTIME"]):
                 extra += "-lrt "
-            if "ARM_CORTEX" not in platformType:
+            if "GNAT_RUNTIME" not in platformType:
                 userLDFlags += " -lm "
             if bCoverage:
                 extra += " -lgcov "
@@ -1174,7 +1174,7 @@ def InvokeOcarinaMakefiles(
                 return cmd + " "
             userCFlags = keepOnlyFirstCompilationOption(userCFlags)
             userLDFlags = keepOnlyFirstCompilationOption(userLDFlags)
-            if "ARM_CORTEX" in platformType:
+            if "GNAT_RUNTIME" in platformType:
                 userCFlags = userCFlags.replace(" -mfloat-abi=hard ", "")  # Not supported when compiling Ada
                 userLDFlags = userLDFlags.replace(" -mfloat-abi=hard ", "")  # Not supported when compiling Ada
                 userCFlags = userCFlags.replace("-fshort-double", "")  # Not supported when compiling Ada
