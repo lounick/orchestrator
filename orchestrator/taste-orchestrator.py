@@ -234,6 +234,7 @@ def usage():
           "-c, --deploymentView d_view.aadl\n\tThe deployment view in AADL\n\n"
           "-S, --subSCADE name:zipFile\n\ta zip file with the SCADE generated C code for a subsystem\n\twith the AADL name of the subsystem before the ':'\n\n"
           "-M, --subSIMULINK name:zipFile\n\ta zip file with the SIMULINK/ERT generated C code for a subsystem\n\twith the AADL name of the subsystem before the ':'\n\n"
+          "-I, --subMicroPython name:zipFile\n\ta zip file with the MicroPython generated C code for a subsystem\n\twith the AADL name of the subsystem before the ':'\n\n"
           "-C, --subC name:zipFile\n\ta zip file with the C code for a subsystem\n\twith the AADL name of the subsystem before the ':'\n\n"
           "-B, --subCPP name:zipFile\n\ta zip file with the C++ code for a subsystem\n\twith the AADL name of the subsystem before the ':'\n\n"
           "-A, --subAda name:zipFile\n\ta zip file with the Ada code for a subsystem\n\twith the AADL name of the subsystem before the ':'\n\n"
@@ -594,6 +595,61 @@ def BuildSimulinkSystems(simulinkSubsystems, CDirectories, cflagsSoFar, bUseSimu
         CommonBuildingPart(baseDir, "Simulink", CDirectories, cflagsSoFar, buildCmdSimulink)
 
 
+def BuildMicroPythonSystems(micropythonSubsystems, CDirectories, cflagsSoFar):
+    '''Compiles all user code for MicroPython Functions'''
+    if micropythonSubsystems:
+        g_stageLog.info("Building MicroPython subSystems")
+    for baseDir in micropythonSubsystems.keys():
+
+        mpyTemplDir = "/home/taste/tool-src/mpy-templates"
+        mpySource = "/home/taste/tool-src/uPython-mirror"
+        os.chdir(baseDir + os.sep + baseDir)
+
+        if (baseDir in g_distributionNodesPlatform.keys()):
+            UpdateEnvForNode(baseDir)
+
+        # run mpy-cross to compile the MicroPython script, and then convert it C source
+        mysystem("%s/mpy-cross/mpy-cross -v %s.py" % (mpySource, baseDir))
+        with open("%s.mpy" % baseDir, "rb") as f:
+            mpy_data = f.read()
+        with open("%s.mpy.c" % baseDir, "wt") as f:
+            f.write("const unsigned int mpy_script_len = %u;\n" % len(mpy_data))
+            f.write("const unsigned char mpy_script_data[%u] = \""  % len(mpy_data))
+            f.write("".join("\\x%02x" % ord(x) for x in mpy_data))
+            f.write("\";\n")
+        with open("%s.mpy.h" % baseDir, "wt") as f:
+            f.write("extern const unsigned int mpy_script_len;\n")
+            f.write("extern const unsigned char mpy_script_data[%u];\n"  % len(mpy_data))
+
+        # copy the MicroPython source
+        mysystem("for file in %s/py/*.c; do cp $file ./py_$(basename $file); done" % (mpySource,))
+        mkdirIfMissing("py");
+        mysystem("for file in %s/py/*.h; do cp $file ./py/; done" % (mpySource,))
+
+        # copy the bindings for this subsystem
+        mysystem("for i in ../%s_mpy_bindings.[ch] ; do if [ -f $i ] ; then cp $i ./ ; fi ; done" % (baseDir,))
+
+        # copy/generate mpconfigport.h, mphalport.h, and utility code
+        mysystem("cp %s/mpconfigport_assert_x86.h ./mpconfigport.h" % (mpyTemplDir,))
+        mysystem("cp %s/mphalport_assert_x86.h ./mphalport.h" % (mpyTemplDir,))
+        mysystem("cp %s/mphalport_assert_x86.c ./mphalport.c" % (mpyTemplDir,))
+        mysystem("cp %s/mputil.[ch] ./" % (mpyTemplDir,))
+
+        # generate the interned qstrs
+        mkdirIfMissing("genhdr")
+        cflags = cflagsSoFar + " -I ../../GlueAndBuild/glue" + baseDir + "/ "
+        mysystem("python %s/py/makeversionhdr.py ./genhdr/mpversion.h" % (mpySource,))
+        mysystem("\"$GNATGCC\" -E -DNO_QSTR %s py_*.c %s_mpy_bindings.c > ./genhdr/qstr.i.last" % (cflags, baseDir))
+        mysystem("python %s/py/makeqstrdefs.py split ./genhdr/qstr.i.last ./genhdr/qstr ./genhdr/qstrdefs.collected.h" % (mpySource,))
+        mysystem("python %s/py/makeqstrdefs.py cat ./genhdr/qstr.i.last ./genhdr/qstr ./genhdr/qstrdefs.collected.h" % (mpySource,))
+        mysystem("""cat ./py/qstrdefs.h ./genhdr/qstrdefs.collected.h | sed 's/^Q(.*)/"&"/' | "$GNATGCC" -E %s - | sed 's/^"\\(Q(.*)\\)"/\\1/' > ./genhdr/qstrdefs.preprocessed.h""" % (cflags,))
+        mysystem("python %s/py/makeqstrdata.py ./genhdr/qstrdefs.preprocessed.h > ./genhdr/qstrdefs.generated.h" % (mpySource,))
+
+        os.chdir("../..")
+
+        CommonBuildingPart(baseDir, "MicroPython", CDirectories, cflagsSoFar + " -std=c99")
+
+
 def BuildCsystems(cSubsystems, CDirectories, cflagsSoFar):
     '''Compiles all user code for C Functions'''
     if cSubsystems:
@@ -850,7 +906,7 @@ def BuildCyclicSubsystems(cyclicSubsystems, cflagsSoFar):
         os.chdir("..")
 
 
-def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems):
+def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems):
     '''Identifies and renames identical symbols in separate subsystems'''
     g_stageLog.info("Renaming commonly named symbols")
 
@@ -863,7 +919,7 @@ def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, cSubsystems,
             return os.sep + baseDir + os.sep
 
     prefixes = {}
-    for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + \
+    for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + micropythonSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + \
             adaSubsystems.keys() + rtdsSubsystems.keys() + ogSubsystems.keys() + \
             guiSubsystems + cyclicSubsystems + vhdlSubsystems.keys():
         if baseDir not in g_distributionNodesPlatform:
@@ -877,7 +933,7 @@ def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, cSubsystems,
     for prefix, systemPlatform in prefixes.items():
         renamingDirs = 0
         cmd = "patchAPLCs.py "
-        for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + \
+        for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + micropythonSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + \
                 adaSubsystems.keys() + rtdsSubsystems.keys() + ogSubsystems.keys() + \
                 guiSubsystems + cyclicSubsystems + vhdlSubsystems.keys():
             _, pref = g_distributionNodesPlatform[baseDir]
@@ -901,7 +957,7 @@ def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, cSubsystems,
 
 
 def InvokeOcarinaMakefiles(
-    scadeSubsystems, simulinkSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems,
+    scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems,
         cflagsSoFar, CDirectories, AdaDirectories, AdaIncludePath, ExtraLibraries,
         bDebug, bUseEmptyInitializers, bCoverage, bProfiling):
 
@@ -1023,7 +1079,7 @@ def InvokeOcarinaMakefiles(
             os.chdir(olddir)
 
             for aplc in g_distributionNodes[node]:
-                for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + adaSubsystems.keys() + rtdsSubsystems.keys():
+                for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + micropythonSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + adaSubsystems.keys() + rtdsSubsystems.keys():
                     if baseDir == aplc:
                         if g_bPolyORB_HI_C and baseDir in adaSubsystems:
                             if 0 != len([x for x in os.listdir(g_absOutputDir + os.sep + baseDir + os.sep + baseDir + os.sep) if x.endswith('.o')]):
@@ -1357,7 +1413,7 @@ def ParseCommandLineArgs():
     g_stageLog.info("Parsing Command Line Args")
     try:
         args = sys.argv[1:]
-        optlist, args = getopt.gnu_getopt(args, "fgpbrvhjn:o:s:c:i:S:M:C:B:A:G:P:V:QC:QA:e:d:l:w:x:", ['fast', 'debug', 'no-retry', 'with-polyorb-hi-c', 'with-empty-init', 'with-coverage', 'aadlv2', 'gprof', 'keep-case', 'nodeOptions=', 'output=', 'stack=', 'deploymentView=', 'interfaceView=', 'subSCADE=', 'subSIMULINK=', 'subC=', 'subCPP=', 'subAda=', 'subOG=', 'subRTDS=', 'subVHDL=', 'subQGenC=', 'subQGenAda=', 'with-extra-C-code=', 'with-extra-Ada-code=', 'with-extra-lib=', 'with-cv-attributes', '--timer='])
+        optlist, args = getopt.gnu_getopt(args, "fgpbrvhjn:o:s:c:i:S:M:I:C:B:A:G:P:V:QC:QA:e:d:l:w:x:", ['fast', 'debug', 'no-retry', 'with-polyorb-hi-c', 'with-empty-init', 'with-coverage', 'aadlv2', 'gprof', 'keep-case', 'nodeOptions=', 'output=', 'stack=', 'deploymentView=', 'interfaceView=', 'subSCADE=', 'subSIMULINK=', 'subMicroPython=', 'subC=', 'subCPP=', 'subAda=', 'subOG=', 'subRTDS=', 'subVHDL=', 'subQGenC=', 'subQGenAda=', 'with-extra-C-code=', 'with-extra-Ada-code=', 'with-extra-lib=', 'with-cv-attributes', '--timer='])
     except:
         usage()
     if args != []:
@@ -1382,6 +1438,7 @@ def ParseCommandLineArgs():
     timerResolution = "100"
     scadeSubsystems = {}
     simulinkSubsystems = {}
+    micropythonSubsystems = {}
     cSubsystems = {}
     qgencSubsystems = {}
     qgenadaSubsystems = {}
@@ -1464,6 +1521,11 @@ def ParseCommandLineArgs():
             if len(arg.split(':')) <= 1:
                 panic('SIMULINK subsystems must be specified in the form subsysAadlName:zipFile')
             simulinkSubsystems[simulinkSubName] = arg.split(':')[1]
+        elif opt in ("-I", "--subMicroPython"):
+            micropythonSubName = arg.split(':')[0]
+            if len(arg.split(':')) <= 1:
+                panic('MicroPython subsystems must be specified in the form subsysAadlName:zipFile')
+            micropythonSubsystems[micropythonSubName] = arg.split(':')[1]
         elif opt in ("-QC", "--subQGenC"):
             qgencSubName = arg.split(':')[0]
             if len(arg.split(':')) <= 1:
@@ -1576,7 +1638,7 @@ disable this check with the -z command line argument or by setting
     # We set LANG to C to avoid issues with LOCALES
     os.putenv("LANG", "C")
 
-    for d in [scadeSubsystems, simulinkSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems]:
+    for d in [scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems]:
         for i in d.keys():
             if not os.path.exists(d[i]):
                 panic("'%s' doesn't exist!" % d[i])
@@ -1590,7 +1652,7 @@ disable this check with the -z command line argument or by setting
     return (outputDir, i_aadlFile, depl_aadlFile,
             bDebug, bProfiling, bUseEmptyInitializers, bCoverage, bKeepCase, cvAttributesFile,
             stackOptions, AdaIncludePath, AdaDirectories, CDirectories, ExtraLibraries,
-            scadeSubsystems, simulinkSubsystems, qgencSubsystems, qgenadaSubsystems, cSubsystems,
+            scadeSubsystems, simulinkSubsystems, micropythonSubsystems, qgencSubsystems, qgenadaSubsystems, cSubsystems,
             cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, vhdlSubsystems,
             timerResolution)
 
@@ -1768,6 +1830,27 @@ def UnzipSimulinkCode(simulinkSubsystems):
             bUseSimulinkMakefiles[baseDir] = [False, "", ""]
         os.chdir("../..")
     return majorSimulinkVersion, bUseSimulinkMakefiles
+
+
+def UnzipMicroPythonCode(micropythonSubsystems):
+    '''Unpacks and fixes up MicroPython code'''
+    if micropythonSubsystems:
+        g_stageLog.info("Unziping MicroPython code")
+    for baseDir, ss in micropythonSubsystems.items():
+        mkdirIfMissing(baseDir)
+        os.chdir(baseDir)
+        if not ss.lower().endswith(".zip"):
+            panic("Only .zip files supported for MicroPython code...")
+        mysystem("unzip -o \"" + ss + "\"")
+        if not os.path.isdir(baseDir):
+            panic("Zip file '%s' must contain a directory with the same name as the AADL subsystem name (%s)\n" % (ss, baseDir))
+        mysystem("find \"%s\"/ ! -type d -exec chmod -x '{}' ';'" % baseDir)
+        mysystem("find \"%s\"/ -exec touch '{}' ';'" % baseDir)
+        # which of the following rm's are needed?
+        mysystem("find \"%s\"/ -type f -iname '*.o' -exec rm -f '{}' ';'" % baseDir)
+        for i in ['xer.c', 'ber.c', 'real.c', 'asn1crt.c', 'and', 'acn.c']:
+            mysystem("find \"%s\"/ -type f -iname %s -exec rm -f '{}' ';'" % (baseDir, i))
+        os.chdir("..")
 
 
 def UnzipCcode(subsystems, lang='C'):
@@ -2050,8 +2133,8 @@ def InvokeObjectGeodeGenerator(ogSubsystems):
 
 def CreateAndCompileGlue(
     asn1Grammar, cflagsSoFar,
-        scadeIncludes, simulinkIncludes, cIncludes, adaIncludes, rtdsIncludes, guiIncludes, cyclicIncludes,
-        scadeSubsystems, simulinkSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems,
+        scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, adaIncludes, rtdsIncludes, guiIncludes, cyclicIncludes,
+        scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems,
         md5s, md5hashesFilename,
         majorSimulinkVersion, bUseSimulinkMakefiles):
 
@@ -2100,14 +2183,14 @@ def CreateAndCompileGlue(
                 # Patch calls to _step functions, sometimes they have 0 param, sometimes they don't
                 # so look at the header files...
                 mysystem('LINES=`grep "_step.*int_T.*tid" ../../"%s"/"%s"/*h  2>/dev/null | wc -l` ; if [ $LINES -eq 1 ] ; then for i in *.c ; do cat "$i" | sed "s,_step(),_step(0)," > a_temp_name && mv a_temp_name "$i" ; done ; fi ; exit 0' % (baseDir, baseDir))
-                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s *.c" % (
+                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s %s *.c" % (
                     cflagsSoFar + CalculateCFLAGS(baseDir, withPOHIC=False) + CalculateUserCodeOnlyCFLAGS(baseDir),
                     bUseSimulinkMakefiles[baseDir][2],
-                    scadeIncludes, simulinkIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes))
+                    scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes))
             else:
-                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s *.c" % (
+                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s %s *.c" % (
                     cflagsSoFar + CalculateCFLAGS(baseDir, withPOHIC=False) + CalculateUserCodeOnlyCFLAGS(baseDir),
-                    scadeIncludes, simulinkIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes,
+                    scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes,
                     vhdlIncludes))
             os.chdir("..")
 
@@ -2129,14 +2212,14 @@ def CreateAndCompileGlue(
                 os.chdir("../../" + baseDir + os.sep + baseDir)
                 CheckDirectives(baseDir)
                 os.chdir(curDir)
-                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s *.c" % (
+                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s %s *.c" % (
                     cflagsSoFar + CalculateCFLAGS(baseDir, withPOHIC=False) + CalculateUserCodeOnlyCFLAGS(baseDir),
                     bUseSimulinkMakefiles[baseDir][2],
-                    scadeIncludes, simulinkIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes))
+                    scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes))
             else:
-                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s *.c" % (
+                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s %s *.c" % (
                     cflagsSoFar + CalculateCFLAGS(baseDir, withPOHIC=False) + CalculateUserCodeOnlyCFLAGS(baseDir),
-                    scadeIncludes, simulinkIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes,
+                    scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes,
                     vhdlIncludes))
             os.chdir("..")
 
@@ -2150,7 +2233,7 @@ def CreateAndCompileGlue(
     runningInstances = 0
     totalCPUs = DetermineNumberOfCPUs()
     allSuccessful = True
-    for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + adaSubsystems.keys() + ogSubsystems.keys() + rtdsSubsystems.keys() + guiSubsystems + cyclicSubsystems + vhdlSubsystems.keys():
+    for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + micropythonSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + adaSubsystems.keys() + ogSubsystems.keys() + rtdsSubsystems.keys() + guiSubsystems + cyclicSubsystems + vhdlSubsystems.keys():
         if runningInstances >= totalCPUs:
             allAreStillAlive = True
             while allAreStillAlive:
@@ -2296,7 +2379,7 @@ def DetectPythonSubsystems():
 
 
 def CreateIncludePaths(
-        scadeSubsystems, simulinkSubsystems, qgencSubsystems, cSubsystems, cppSubsystems, qgenadaSubsystems,
+        scadeSubsystems, simulinkSubsystems, micropythonSubsystems, qgencSubsystems, cSubsystems, cppSubsystems, qgenadaSubsystems,
         adaSubsystems, rtdsSubsystems, guiSubsystems, cyclicSubsystems, AdaIncludePath):
     '''Creates the include flags (-I ...) for all subsystems'''
     g_stageLog.info("Creating include paths directive")
@@ -2317,6 +2400,11 @@ def CreateIncludePaths(
     for baseDir in simulinkSubsystems.keys():
         if os.path.isdir(baseDir + os.sep + baseDir):
             simulinkIncludes += ' -I "../../' + baseDir + os.sep + baseDir + os.sep + '"'
+
+    micropythonIncludes = ""
+    for baseDir in micropythonSubsystems.keys():
+        if os.path.isdir(baseDir + os.sep + baseDir):
+            micropythonIncludes += ' -I "../../' + baseDir + os.sep + baseDir + os.sep + '"'
 
     cIncludes = ""
     cur_dir = os.path.abspath(os.getcwd())
@@ -2350,7 +2438,7 @@ def CreateIncludePaths(
     for baseDir in cyclicSubsystems:
         if os.path.isdir(baseDir + os.sep + baseDir):
             cyclicIncludes += ' -I "../../' + baseDir + os.sep + '"'
-    return (scadeIncludes, simulinkIncludes, cIncludes,
+    return (scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes,
             rtdsIncludes, guiIncludes, adaIncludes, cyclicIncludes, AdaIncludePath)
 
 
@@ -2375,7 +2463,7 @@ def main():
     outputDir, i_aadlFile, depl_aadlFile, \
         bDebug, bProfiling, bUseEmptyInitializers, bCoverage, bKeepCase, cvAttributesFile, \
         stackOptions, AdaIncludePath, AdaDirectories, CDirectories, ExtraLibraries, \
-        scadeSubsystems, simulinkSubsystems, qgencSubsystems, qgenadaSubsystems, cSubsystems, \
+        scadeSubsystems, simulinkSubsystems, micropythonSubsystems, qgencSubsystems, qgenadaSubsystems, cSubsystems, \
         cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, vhdlSubsystems, \
         timerResolution = cmdLineInformation
 
@@ -2430,6 +2518,7 @@ def main():
 
     UnzipSCADEcode(scadeSubsystems)
     majorSimulinkVersion, bUseSimulinkMakefiles = UnzipSimulinkCode(simulinkSubsystems)
+    UnzipMicroPythonCode(micropythonSubsystems)
     UnzipCcode(cSubsystems, 'C')
     UnzipCcode(cppSubsystems, 'C++')
     AdaIncludePath = UnzipAdaCode(adaSubsystems, AdaIncludePath)
@@ -2448,16 +2537,16 @@ def main():
 
     InvokeObjectGeodeGenerator(ogSubsystems)
 
-    scadeIncludes, simulinkIncludes, cIncludes, rtdsIncludes, guiIncludes, adaIncludes, cyclicIncludes, AdaIncludePath = \
+    scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, rtdsIncludes, guiIncludes, adaIncludes, cyclicIncludes, AdaIncludePath = \
         CreateIncludePaths(
-            scadeSubsystems, simulinkSubsystems, qgencSubsystems, cSubsystems, cppSubsystems, qgenadaSubsystems,
+            scadeSubsystems, simulinkSubsystems, micropythonSubsystems, qgencSubsystems, cSubsystems, cppSubsystems, qgenadaSubsystems,
             adaSubsystems, rtdsSubsystems, guiSubsystems, cyclicSubsystems, AdaIncludePath)
 
     CreateAndCompileGlue(
         asn1Grammar,
         cflagsSoFar,
-        scadeIncludes, simulinkIncludes, cIncludes, adaIncludes, rtdsIncludes, guiIncludes, cyclicIncludes,
-        scadeSubsystems, simulinkSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems,
+        scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, adaIncludes, rtdsIncludes, guiIncludes, cyclicIncludes,
+        scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems,
         md5s, md5hashesFilename,
         majorSimulinkVersion, bUseSimulinkMakefiles)
 
@@ -2465,6 +2554,7 @@ def main():
 
     BuildSCADEsystems(scadeSubsystems, CDirectories, cflagsSoFar)
     BuildSimulinkSystems(simulinkSubsystems, CDirectories, cflagsSoFar, bUseSimulinkMakefiles)
+    BuildMicroPythonSystems(micropythonSubsystems, CDirectories, cflagsSoFar)
     BuildCsystems(cSubsystems, CDirectories, cflagsSoFar)
     BuildCPPsystems(cppSubsystems, CDirectories, cflagsSoFar)
     BuildAdaSystems_C_code(adaSubsystems, CDirectories, uniqueSetOfAdaPackages, cflagsSoFar)
@@ -2483,6 +2573,7 @@ def main():
     RenameCommonlyNamedSymbols(
         scadeSubsystems,
         simulinkSubsystems,
+        micropythonSubsystems,
         cSubsystems,
         cppSubsystems,
         adaSubsystems,
@@ -2493,7 +2584,7 @@ def main():
         vhdlSubsystems)
 
     AdaIncludePath = InvokeOcarinaMakefiles(
-        scadeSubsystems, simulinkSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems,
+        scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems,
         cflagsSoFar, CDirectories, AdaDirectories, AdaIncludePath, ExtraLibraries,
         bDebug, bUseEmptyInitializers, bCoverage, bProfiling)
 
