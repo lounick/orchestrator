@@ -601,8 +601,8 @@ def BuildMicroPythonSystems(micropythonSubsystems, CDirectories, cflagsSoFar):
         g_stageLog.info("Building MicroPython subSystems")
     for baseDir in micropythonSubsystems.keys():
 
-        mpyTemplDir = "/home/taste/tool-src/mpy-templates"
-        mpySource = "/home/taste/tool-src/uPython-mirror"
+        mpyTemplDir = "/home/taste/tool-src/upython-templates"
+        mpySource = "/home/taste/tool-src/upython-mirror"
         os.chdir(baseDir + os.sep + baseDir)
 
         if (baseDir in g_distributionNodesPlatform.keys()):
@@ -647,7 +647,9 @@ def BuildMicroPythonSystems(micropythonSubsystems, CDirectories, cflagsSoFar):
 
         os.chdir("../..")
 
-        CommonBuildingPart(baseDir, "MicroPython", CDirectories, cflagsSoFar + " -std=c99")
+        CommonBuildingPart(baseDir, "MicroPython", CDirectories, cflagsSoFar + " -std=c99 -Wno-switch -Wno-override-init -Wno-jump-misses-init",
+            buildCmd=lambda baseDir, cf:
+        mysystem("\"$GNATGCC\" -c %s -Wno-switch-enum -I ../../GlueAndBuild/glue%s/ -I ../../auto-src/ *.c" % (cf, baseDir)))
 
 
 def BuildCsystems(cSubsystems, CDirectories, cflagsSoFar):
