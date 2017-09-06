@@ -601,8 +601,8 @@ def BuildMicroPythonSystems(micropythonSubsystems, CDirectories, cflagsSoFar):
         g_stageLog.info("Building MicroPython subSystems")
     for baseDir in micropythonSubsystems.keys():
 
-        mpyTemplDir = "/home/taste/tool-src/upython-templates"
-        mpySource = "/home/taste/tool-src/upython-mirror"
+        mpySource = "/home/taste/tool-src/upython-taste"
+        mpyTemplDir = mpySource + "/ports/esa-taste"
         os.chdir(baseDir + os.sep + baseDir)
 
         if (baseDir in g_distributionNodesPlatform.keys()):
@@ -630,9 +630,9 @@ def BuildMicroPythonSystems(micropythonSubsystems, CDirectories, cflagsSoFar):
         mysystem("for i in ../%s_mpy_bindings.[ch] ; do if [ -f $i ] ; then cp $i ./ ; fi ; done" % (baseDir,))
 
         # copy/generate mpconfigport.h, mphalport.h, and utility code
-        mysystem("cp %s/mpconfigport_assert_x86.h ./mpconfigport.h" % (mpyTemplDir,))
-        mysystem("cp %s/mphalport_assert_x86.h ./mphalport.h" % (mpyTemplDir,))
-        mysystem("cp %s/mphalport_assert_x86.c ./mphalport.c" % (mpyTemplDir,))
+        mysystem("cp %s/mpconfigport_taste_x86.h ./mpconfigport.h" % (mpyTemplDir,))
+        mysystem("cp %s/mphalport_taste_x86.h ./mphalport.h" % (mpyTemplDir,))
+        mysystem("cp %s/mphalport_taste_x86.c ./mphalport.c" % (mpyTemplDir,))
         mysystem("cp %s/mputil.[ch] ./" % (mpyTemplDir,))
 
         # generate the interned qstrs
