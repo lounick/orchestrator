@@ -1673,7 +1673,7 @@ def CreateDataViews(i_aadlFile, asn1Grammar, acnFile, baseASN, md5s, md5hashesFi
     '''Invokes asn2aadlPlus to create AADL DataViews'''
     g_stageLog.info("Creating AADL dataviews")
     # Create a "cropped" version of the input ASN.1 grammar, one without the TASTE directives
-    mysystem("\"$DMT/asn1scc/taste-extract-asn-from-design.exe\" -i \"%s\" -k \"%s\" -c \"%s\"" % (i_aadlFile, asn1Grammar, acnFile))
+    mysystem("mono \"$DMT/asn1scc/taste-extract-asn-from-design.exe\" -i \"%s\" -k \"%s\" -c \"%s\"" % (i_aadlFile, asn1Grammar, acnFile))
     mysystem("cp \"" + asn1Grammar + "\" . 2>/dev/null || exit 0")
     mysystem("cp \"" + acnFile + "\" . 2>/dev/null || exit 0")
     if os.path.getsize(acnFile):
@@ -1689,7 +1689,7 @@ def CreateDataViews(i_aadlFile, asn1Grammar, acnFile, baseASN, md5s, md5hashesFi
 
     # Now create the full (non-cropped) ASN.1 grammar, since the DataView AADL we will create below must include ALL types
     # (i.e. including TASTE-Directives)
-    mysystem("\"$DMT/asn1scc/taste-extract-asn-from-design.exe\" -i \"%s\" -j \"%s\"" % (i_aadlFile, asn1Grammar))
+    mysystem("mono \"$DMT/asn1scc/taste-extract-asn-from-design.exe\" -i \"%s\" -j \"%s\"" % (i_aadlFile, asn1Grammar))
 
     # Create the DataView AADL
     newGrammar = False
@@ -1717,7 +1717,7 @@ def CreateDataViews(i_aadlFile, asn1Grammar, acnFile, baseASN, md5s, md5hashesFi
         sys.stdout.flush()
 
     # And now, re-create the "cropped" version of the input ASN.1 grammar, that everyone else uses
-    mysystem("\"$DMT/asn1scc/taste-extract-asn-from-design.exe\" -i \"%s\" -k \"%s\"" % (i_aadlFile, asn1Grammar))
+    mysystem("mono \"$DMT/asn1scc/taste-extract-asn-from-design.exe\" -i \"%s\" -k \"%s\"" % (i_aadlFile, asn1Grammar))
     return acnFile, newGrammar
 
 
