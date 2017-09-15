@@ -100,6 +100,11 @@ g_customLDFlagsPerNode = {}
 # otherwise.
 g_customCFlagsForUserCodeOnlyPerNode = {}
 
+# Discussion in Mantis ticket 662: Adding env vars per deployment
+# target and using them in the build - e.g.
+#    RTEMS_MAKEFILE_PATH
+g_envVarsPerNode = {}
+
 # Output folder we build in
 g_absOutputDir = ""
 
@@ -2062,6 +2067,13 @@ def ParsePartitionInformation():
                     g_customLDFlagsPerNode.setdefault(partitionName, []).append("-g  -fprofile-arcs -ftest-coverage -lgcov")
             except:
                 pass
+        elif line.startswith('envvars'):
+            g_stageLog.info("Assigning target-specific environment variables...")
+            envvars = re.sub(r'^envvars\s* ', '', line)
+            for envVarAssignment in envvars.split(':'):
+                key, value = envVarAssignment.split('=')
+                print(key, '==>', value)
+                os.putenv(key, value)
         else:
             g_fromFunctionToPartition[line] = partitionNameWithoutSuffix
             if line not in g_distributionNodes[partitionName]:
