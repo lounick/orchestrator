@@ -2073,7 +2073,7 @@ def ParsePartitionInformation():
             for envVarAssignment in envvars.split(':'):
                 key, value = envVarAssignment.split('=')
                 print(key, '==>', value)
-                platform = g_distributionNodesPlatform[partitionNameWithoutSuffix][0]
+                platform = g_distributionNodesPlatform[partitionName][0]
                 os.putenv(key, value)
                 os.environ[key] = value
                 if 'RTEMS' in platform:
