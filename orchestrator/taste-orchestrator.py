@@ -2073,7 +2073,11 @@ def ParsePartitionInformation():
             for envVarAssignment in envvars.split(':'):
                 key, value = envVarAssignment.split('=')
                 print(key, '==>', value)
+                platform = g_distributionNodesPlatform[partitionNameWithoutSuffix][0]
                 os.putenv(key, value)
+                os.environ[key] = value
+                if 'RTEMS' in platform:
+                    SetEnvForRTEMS(platform)
         else:
             g_fromFunctionToPartition[line] = partitionNameWithoutSuffix
             if line not in g_distributionNodes[partitionName]:
