@@ -364,7 +364,7 @@ def CalculateCFLAGS(node, withPOHIC=True):
     if node not in g_distributionNodesPlatform:
         panic("%s did not exist in the 'nodes' file" % node)
     kind, _ = g_distributionNodesPlatform[node]
-    result = " " + mflags(node) + " "
+    result = " -std=c99 " + mflags(node) + " "
     if g_bPolyORB_HI_C and withPOHIC:
         result += handlePoHiC(node) + " "
     result += handleXenomaiCflags(node)
