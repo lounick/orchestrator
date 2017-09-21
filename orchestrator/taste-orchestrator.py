@@ -2071,7 +2071,17 @@ def ParsePartitionInformation():
             g_stageLog.info("Assigning target-specific environment variables...")
             envvars = re.sub(r'^envvars\s* ', '', line)
             for envVarAssignment in envvars.split(':'):
-                key, value = envVarAssignment.split('=')
+                idx = envVarAssignment.find('=')
+                if idx == -1:
+                    panic('Unexpected EnvVars value:\n\t' + envVarAssignment)
+
+                # If you are wondering why we don't just split on '=',
+                # think of an env var setting like...
+                #
+                #    FOOBAR="BAR=1 BAZ=2"
+                key = envVarAssignment[:idx]
+                value =  envVarAssignment[idx+1:]
+
                 print(key, '==>', value)
                 platform = g_distributionNodesPlatform[partitionName][0]
                 os.putenv(key, value)
@@ -2550,6 +2560,7 @@ def main():
 
     AdaIncludePath = AdaSpecialHandling(AdaIncludePath, adaSubsystems)
     ParsePartitionInformation()
+    cflagsSoFar += " " + os.getenv('CFLAGS', default="") + " "
     guiSubsystems, AdaIncludePath = DetectGUIsubSystems(AdaIncludePath)
     cyclicSubsystems = DetectCyclicSubsystems()
 
