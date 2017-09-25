@@ -1969,16 +1969,24 @@ def InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, stackOption
         mysystem('"buildsupport" ' + timerOption + converterFlag + dbgOption + stackOptions + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" ocarina_components.aadl ' + " -d " + dv + " --polyorb-hi-c --smp2 " + ellidissLibs)
     else:
         mysystem('"buildsupport" ' + timerOption + converterFlag + dbgOption + stackOptions + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" ocarina_components.aadl ' + " -d " + dv + " --smp2 " + ellidissLibs)
-    if cvAttributesFile != "":
-        # processList = ['ConcurrencyView/process.aadl']
+    if cvAttributesFile.endswith("ConcurrencyView.pro"):
+        # Legacy support of v1.3
         processList = glob.glob("ConcurrencyView/*_Thread.aadl")
-        # processList.append(os.popen("ocarina-config --resources").readlines()[0].strip() + "/AADLv2/ocarina_components.aadl")
         g_stageLog.info("Updating thread priorities, stack sizes, and phases using " + os.path.basename(cvAttributesFile) + " as input")
         mysystem(
             "TASTE-CV --edit-aadl " +
             ",".join('"' + x + '"' for x in processList) +
             " --update-properties " +
             '"' + cvAttributesFile + '" --show false')
+    elif cvAttributesFile.endswith("ConcurrencyView_Properties.aadl"):
+        # V2.x tools
+        processList = glob.glob("ConcurrencyView/*_Thread.aadl")
+        g_stageLog.info("Updating thread priorities, stack sizes, and phases using " + os.path.basename(cvAttributesFile) + " as input")
+        mysystem(
+            "TASTE --load-concurrency-view ConcurrencyView/process.aadl " +
+            " --update-properties " +
+            '"' + cvAttributesFile + '" --show false')
+
 
 
 def AdaSpecialHandling(AdaIncludePath, adaSubsystems):
