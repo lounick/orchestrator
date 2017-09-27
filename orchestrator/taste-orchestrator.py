@@ -2363,7 +2363,7 @@ end ASSERT_System.Impl;
                    (
                        '"' + os.path.basename(i_aadlFile) + '",',
                        os.path.basename(depl_aadlFile),
-                       ", ".join(["\"" + x + "\"" for x in os.listdir("../ConcurrencyView/") if x != "nodes"]),
+                       ", ".join(["\"" + x + "\"" for x in os.listdir("../ConcurrencyView/") if x.endswith("aadl")]),
                        g_bPolyORB_HI_C and "polyorb_hi_c" or "polyorb_hi_ada",
                        "2",
                        " ",
