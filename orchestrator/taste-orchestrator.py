@@ -2033,42 +2033,55 @@ def ParsePartitionInformation():
             if partitionNameWithoutSuffix in existingPartitionNamesWithoutSuffix:
                 panic("\nYou can't use two partitions with the same name (%s)!" % partitionNameWithoutSuffix)
             existingPartitionNamesWithoutSuffix.append(partitionNameWithoutSuffix)
-            if 'RTEMS' in data[2]:
-                SetEnvForRTEMS(data[2])
             g_distributionNodes[partitionName] = []
-            # New detection logic for platform-level CC, CFLAGS and LDFLAGS to use
-            # (from ticket 311)
-            makefilename = "/tmp/Makefile" + str(os.getpid())
-            f = open(makefilename, "w")
-            f.write('include GlueAndBuild/deploymentview_final/' + partitionName + '/Makefile\n')
-            f.write('\n')
-            f.write('printCC:\n')
-            f.write('\t@$(info $(CC))\n\n')
-            f.write('printCflags:\n')
-            f.write('\t@$(info $(CFLAGS))\n\n')
-            f.write('printLdflags:\n')
-            f.write('\t@$(info $(LDFLAGS))\n\n')
-            f.close()
-            try:
-                cc = getSingleLineFromCmdOutput("make -s -f " + makefilename + " printCC 2>&1").split()[0]
-                if cc == "cc":
-                    prefix = ""
-                else:
-                    prefix = re.sub(r'gcc$', '', cc)
-            except:
-                panic("Failed to detect a proper compiler for " + partitionName)
-            cf = getSingleLineFromCmdOutput("make -s -f " + makefilename + " printCflags 2>&1")
-            cf = cf.replace("-DRTEMS_PURE", "")
-            ld = getSingleLineFromCmdOutput("make -s -f " + makefilename + " printLdflags 2>&1")
-            os.unlink(makefilename)
-            if partitionNameWithoutSuffix not in g_customCFlagsForUserCodeOnlyPerNode:
-                g_customCFlagsForUserCodeOnlyPerNode.setdefault(partitionNameWithoutSuffix, []).append(cf)
-            if partitionNameWithoutSuffix not in g_customLDFlagsPerNode:
-                g_customLDFlagsPerNode.setdefault(partitionNameWithoutSuffix, []).append(ld)
-            g_log.write('for ' + partitionNameWithoutSuffix + ', identified CC:\n' + cc + '\n')
-            g_log.write('for ' + partitionNameWithoutSuffix + ', identified CFLAGS:\n' + cf + '\n')
-            g_log.write('for ' + partitionNameWithoutSuffix + ', identified LDFLAGS:\n' + ld + '\n')
-            g_distributionNodesPlatform[partitionName] = [data[2], prefix]
+
+            def getCompilerAndLinkerFlags():
+                # New detection logic for platform-level CC, CFLAGS and LDFLAGS to use
+                # (from ticket 311)
+                makefilename = "/tmp/Makefile" + str(os.getpid())
+                f = open(makefilename, "w")
+                f.write('include GlueAndBuild/deploymentview_final/' + partitionName + '/Makefile\n')
+                f.write('\n')
+                f.write('printCC:\n')
+                f.write('\t@$(info $(CC))\n\n')
+                f.write('printCflags:\n')
+                f.write('\t@$(info $(CFLAGS))\n\n')
+                f.write('printLdflags:\n')
+                f.write('\t@$(info $(LDFLAGS))\n\n')
+                f.close()
+                try:
+                    cc = getSingleLineFromCmdOutput("make -s -f " + makefilename + " printCC 2>&1").split()[0]
+                    if cc == "cc":
+                        prefix = ""
+                    else:
+                        prefix = re.sub(r'gcc$', '', cc)
+                except:
+                    panic("Failed to detect a proper compiler for " + partitionName)
+                cf = getSingleLineFromCmdOutput("make -s -f " + makefilename + " printCflags 2>&1")
+                cf = cf.replace("-DRTEMS_PURE", "")
+                ld = getSingleLineFromCmdOutput("make -s -f " + makefilename + " printLdflags 2>&1")
+                os.unlink(makefilename)
+                if partitionNameWithoutSuffix not in g_customCFlagsForUserCodeOnlyPerNode:
+                    g_customCFlagsForUserCodeOnlyPerNode.setdefault(partitionNameWithoutSuffix, []).append(cf)
+                if partitionNameWithoutSuffix not in g_customLDFlagsPerNode:
+                    g_customLDFlagsPerNode.setdefault(partitionNameWithoutSuffix, []).append(ld)
+                g_log.write('for ' + partitionNameWithoutSuffix + ', identified CC:\n' + cc + '\n')
+                g_log.write('for ' + partitionNameWithoutSuffix + ', identified CFLAGS:\n' + cf + '\n')
+                g_log.write('for ' + partitionNameWithoutSuffix + ', identified LDFLAGS:\n' + ld + '\n')
+                g_distributionNodesPlatform[partitionName] = [data[2], prefix]
+                return prefix
+
+            if 'RTEMS' not in data[2]:
+                # Learn the compiler and linker flags, by calling out into
+                # a temporary Makefile that includes the Ocarina-generated one
+                # (see instructions from Jerome in ticket 311)
+                #
+                # But don't do this for RTEMS! Because for this to work, we
+                # need to wait for access to the EnvVars information... The
+                # Ocarina-generated makefile depends on proper setting of
+                # RTEMS_MAKEFILE_PATH, which itself depends on the deployment
+                # processor!
+                prefix = getCompilerAndLinkerFlags()
             try:
                 if 'coverage' in data[3:]:
                     g_customCFlagsPerNode.setdefault(partitionName, []).append("-g -fprofile-arcs -ftest-coverage -DCOVERAGE")
@@ -2082,20 +2095,22 @@ def ParsePartitionInformation():
                 idx = envVarAssignment.find('=')
                 if idx == -1:
                     panic('Unexpected EnvVars value:\n\t' + envVarAssignment)
-
-                # If you are wondering why we don't just split on '=',
-                # think of an env var setting like...
-                #
+                # Why we don't just split on '='?
+                # Because an env var setting can be like this one:
                 #    FOOBAR="BAR=1 BAZ=2"
                 key = envVarAssignment[:idx]
                 value =  envVarAssignment[idx+1:]
-
                 print(key, '==>', value)
-                platform = g_distributionNodesPlatform[partitionName][0]
                 os.putenv(key, value)
                 os.environ[key] = value
+                # If we just read RTEMS_MAKEFILE_PATH related settings, the target was
+                # an RTEMS one - so we first set the env up, and THEN call out into the
+                # Ocarina-generated Makefile to learn the compilation and linking flags
+                # for this RTEMS target.
+                platform = g_distributionNodesPlatform.get(partitionName, [data[2], None])[0]
                 if 'RTEMS' in platform:
                     SetEnvForRTEMS(platform)
+                    prefix = getCompilerAndLinkerFlags()
         else:
             g_fromFunctionToPartition[line] = partitionNameWithoutSuffix
             if line not in g_distributionNodes[partitionName]:
