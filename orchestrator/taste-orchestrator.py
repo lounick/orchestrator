@@ -2211,7 +2211,7 @@ def CreateAndCompileGlue(
         absDview = os.path.abspath('../D_view.aadl')
         absMinicv = os.path.abspath('../' + baseDir + '/mini_cv.aadl')
         if os.getenv("ZESTSC1") is not None:
-            vhdlIncludes = "-I ~/work/Xilinx/ZestSC1/Inc/ "
+            vhdlIncludes = "-I ~/tool-src/misc/ZestSC1/Inc/ "
         else:
             vhdlIncludes = " "
         if absDview not in md5s or md5s[absDview] != md5hash(absDview) or absMinicv not in md5s or md5s[absMinicv] != md5hash(absMinicv):
