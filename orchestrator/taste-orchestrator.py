@@ -296,7 +296,8 @@ def mflags(node):
         result += " -mfloat-abi=hard "
         # Cortex M4's FPU does not support double precision! if C code uses double,
         # it must be forced to use float instead:
-        result += " -fshort-double "
+        # Edit: this worked in gnat2016 but not in gnat2017
+        # result += " -fshort-double "
     return result
 
 
