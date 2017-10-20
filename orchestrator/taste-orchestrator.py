@@ -607,7 +607,7 @@ def BuildMicroPythonSystems(micropythonSubsystems, CDirectories, cflagsSoFar):
         g_stageLog.info("Building MicroPython subSystems")
     for baseDir in micropythonSubsystems.keys():
 
-        mpySource = "/home/taste/tool-src/upython-taste"
+        mpySource = "$(taste-config --prefix)/../tool-src/upython-taste"
         mpyTemplDir = mpySource + "/ports/esa-taste"
         os.chdir(baseDir + os.sep + baseDir)
 
