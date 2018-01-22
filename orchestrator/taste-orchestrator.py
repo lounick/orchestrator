@@ -1744,9 +1744,9 @@ def InvokeASN1Compiler(asn1Grammar, baseASN, acnFile, baseACN, isNewGrammar, bCo
     # Invoke compiler
     if isNewGrammar:
         if bCoverage:
-            mysystem("mono \"$DMT\"/asn1scc/asn1.exe -c -uPER -typePrefix asn1Scc -noInit -noChecks -wordSize 8 -ACN \"" + baseACN + "\" \"" + baseASN + "\"")
+            mysystem("mono \"$DMT\"/asn1scc/asn1.exe -c -uPER -typePrefix asn1Scc -ACN \"" + baseACN + "\" \"" + baseASN + "\"")
         else:
-            mysystem("mono \"$DMT\"/asn1scc/asn1.exe -c -uPER -typePrefix asn1Scc -wordSize 8 -ACN \"" + baseACN + "\" \"" + baseASN + "\"")
+            mysystem("mono \"$DMT\"/asn1scc/asn1.exe -c -uPER -typePrefix asn1Scc -ACN \"" + baseACN + "\" \"" + baseASN + "\"")
     else:
         print "No need to reinvoke the ASN.1 compiler"
         sys.stdout.flush()
