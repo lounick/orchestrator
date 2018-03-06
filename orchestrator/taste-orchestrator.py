@@ -4,40 +4,10 @@ This is the orchestrator that builds all TASTE systems - completely automating
 the build process, invoking all necessary tools and code generators
 '''
 #
-# (C) Semantix Information Technologies.
+# Copyright (C) 2008-2015 Semantix Information Technologies, Neuropublic
+# Copyright (C) 2008-2018 Europeran Space Agency
+# Copyright (c) 2014-2015 IB Krates <info@krates.ee>
 #
-# Copyright 2014-2015 IB Krates <info@krates.ee>
-#       QGenc code generator integration
-#
-# Semantix Information Technologies is licensing the code of the
-# Data Modelling Tools (DMT) in the following dual-license mode:
-#
-# GNU GPL v. 2.1:
-#       This version of DMT is the one to use for the development of
-# non-commercial applications, when you are willing to comply
-# with the terms of the GNU General Public License version 2.1.
-#
-# The features of the two licenses are summarized below:
-#
-#                       Commercial
-#                       Developer               GPL
-#                       License
-#
-# License cost          License fee charged     No license fee
-#
-# Must provide source
-# code changes to DMT   No, modifications can   Yes, all source code
-#                       be closed               must be provided back
-#
-# Can create            Yes, That is,           No, applications are subject
-# proprietary           no source code needs    to the GPL and all source code
-# applications          to be disclosed         must be made available
-#
-# Support               Yes, 12 months of       No, but available separately
-#                       premium technical       for purchase
-#                       support
-#
-# Charge for Runtimes   None                    None
 #
 import sys
 import os
