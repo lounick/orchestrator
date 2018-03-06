@@ -5,7 +5,7 @@ the build process, invoking all necessary tools and code generators
 '''
 #
 # Copyright (C) 2008-2015 Semantix Information Technologies, Neuropublic
-# Copyright (C) 2008-2018 Europeran Space Agency
+# Copyright (C) 2008-2018 European Space Agency
 # Copyright (c) 2014-2015 IB Krates <info@krates.ee>
 #
 #
