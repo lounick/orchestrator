@@ -1974,7 +1974,8 @@ def AdaSpecialHandling(AdaIncludePath, adaSubsystems):
     for maybeDir in os.listdir("."):
         if not os.path.isdir(maybeDir):
             continue
-        if not maybeDir.startswith("fv_") and not maybeDir.startswith("vt_"):
+        if not maybeDir.startswith("fv_") and not maybeDir.startswith("vt_") \
+                and not maybeDir.endswith("_taste_api"):
             continue
         if AdaIncludePath is not None:
             AdaIncludePath += ":" + os.path.abspath("." + os.sep + maybeDir)
