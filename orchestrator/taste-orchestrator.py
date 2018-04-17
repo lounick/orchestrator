@@ -204,7 +204,6 @@ def usage():
           "-r, --with-coverage\n\tUse GCC coverage options (gcov) for the generated applications\n\n"
           "-h, --gprof\n\tCreate binaries that can be profiled with gprof\n\n"
           "-o, --output outputDir\n\tDirectory with generated sources and code\n\n"
-          "-s, --stack stackSizeInKB\n\tHow much stack size to use (in KB)\n\n"
           "-i, --interfaceView i_view.aadl\n\tThe interface view in AADL\n\n"
           "-c, --deploymentView d_view.aadl\n\tThe deployment view in AADL\n\n"
           "-S, --subSCADE name:zipFile\n\ta zip file with the SCADE generated C code for a subsystem\n\twith the AADL name of the subsystem before the ':'\n\n"
@@ -1391,7 +1390,7 @@ def ParseCommandLineArgs():
     g_stageLog.info("Parsing Command Line Args")
     try:
         args = sys.argv[1:]
-        optlist, args = getopt.gnu_getopt(args, "fgpbrvhjn:o:s:c:i:S:M:I:C:B:A:G:P:V:QC:QA:e:d:l:w:x:", ['fast', 'debug', 'no-retry', 'with-polyorb-hi-c', 'with-empty-init', 'with-coverage', 'aadlv2', 'gprof', 'keep-case', 'nodeOptions=', 'output=', 'stack=', 'deploymentView=', 'interfaceView=', 'subSCADE=', 'subSIMULINK=', 'subMicroPython=', 'subC=', 'subCPP=', 'subAda=', 'subOG=', 'subRTDS=', 'subVHDL=', 'subQGenC=', 'subQGenAda=', 'with-extra-C-code=', 'with-extra-Ada-code=', 'with-extra-lib=', 'with-cv-attributes', '--timer='])
+        optlist, args = getopt.gnu_getopt(args, "fgpbrvhjn:o:c:i:S:M:I:C:B:A:G:P:V:QC:QA:e:d:l:w:x:", ['fast', 'debug', 'no-retry', 'with-polyorb-hi-c', 'with-empty-init', 'with-coverage', 'aadlv2', 'gprof', 'keep-case', 'nodeOptions=', 'output=', 'deploymentView=', 'interfaceView=', 'subSCADE=', 'subSIMULINK=', 'subMicroPython=', 'subC=', 'subCPP=', 'subAda=', 'subOG=', 'subRTDS=', 'subVHDL=', 'subQGenC=', 'subQGenAda=', 'with-extra-C-code=', 'with-extra-Ada-code=', 'with-extra-lib=', 'with-cv-attributes', '--timer='])
     except:
         usage()
     if args != []:
@@ -1411,7 +1410,6 @@ def ParseCommandLineArgs():
     outputDir = ""
     depl_aadlFile = ""
     i_aadlFile = ""
-    stackOptions = ""
     cvAttributesFile = ""
     timerResolution = "100"
     scadeSubsystems = {}
@@ -1451,8 +1449,6 @@ def ParseCommandLineArgs():
             bKeepCase = True
         elif opt in ("-o", "--output"):
             outputDir = arg
-        elif opt in ("-s", "--stack"):
-            stackOptions = "--stack " + str(arg) + " "
         elif opt in ("-c", "--deploymentView"):
             depl_aadlFile = arg
         elif opt in ("-i", "--interfaceView"):
@@ -1629,7 +1625,7 @@ disable this check with the -z command line argument or by setting
 
     return (outputDir, i_aadlFile, depl_aadlFile,
             bDebug, bProfiling, bUseEmptyInitializers, bCoverage, bKeepCase, cvAttributesFile,
-            stackOptions, AdaIncludePath, AdaDirectories, CDirectories, ExtraLibraries,
+            AdaIncludePath, AdaDirectories, CDirectories, ExtraLibraries,
             scadeSubsystems, simulinkSubsystems, micropythonSubsystems, qgencSubsystems, qgenadaSubsystems, cSubsystems,
             cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, vhdlSubsystems,
             timerResolution)
@@ -1919,7 +1915,7 @@ def DetectAdaPackages(adaSubsystems, asn1Grammar):
     return uniqueSetOfAdaPackages
 
 
-def InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, stackOptions, cvAttributesFile, timerResolution):
+def InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, cvAttributesFile, timerResolution):
     '''Invokes the buildsupport code generator that creates the PI/RI bridges'''
     g_stageLog.info("Invoking BuildSupport")
     caseHandling = " --keep-case " if bKeepCase else ""
@@ -1937,9 +1933,9 @@ def InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, stackOption
         converterFlag = " --future "
     timerOption = " -x " + timerResolution + " "
     if g_bPolyORB_HI_C:
-        mysystem('"buildsupport" ' + timerOption + converterFlag + dbgOption + stackOptions + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" ocarina_components.aadl ' + " -d " + dv + " --polyorb-hi-c --smp2 " + ellidissLibs)
+        mysystem('"buildsupport" ' + timerOption + converterFlag + dbgOption + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" ocarina_components.aadl ' + " -d " + dv + " --polyorb-hi-c --smp2 " + ellidissLibs)
     else:
-        mysystem('"buildsupport" ' + timerOption + converterFlag + dbgOption + stackOptions + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" ocarina_components.aadl ' + " -d " + dv + " --smp2 " + ellidissLibs)
+        mysystem('"buildsupport" ' + timerOption + converterFlag + dbgOption + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" ocarina_components.aadl ' + " -d " + dv + " --smp2 " + ellidissLibs)
     if cvAttributesFile.endswith("ConcurrencyView.pro"):
         # Legacy support of v1.3
         processList = glob.glob("ConcurrencyView/*_Thread.aadl")
@@ -2485,7 +2481,7 @@ def main():
     cmdLineInformation = ParseCommandLineArgs()
     outputDir, i_aadlFile, depl_aadlFile, \
         bDebug, bProfiling, bUseEmptyInitializers, bCoverage, bKeepCase, cvAttributesFile, \
-        stackOptions, AdaIncludePath, AdaDirectories, CDirectories, ExtraLibraries, \
+        AdaIncludePath, AdaDirectories, CDirectories, ExtraLibraries, \
         scadeSubsystems, simulinkSubsystems, micropythonSubsystems, qgencSubsystems, qgenadaSubsystems, cSubsystems, \
         cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, vhdlSubsystems, \
         timerResolution = cmdLineInformation
@@ -2548,7 +2544,7 @@ def main():
     uniqueSetOfAdaPackages = DetectAdaPackages(adaSubsystems, asn1Grammar)
     UnzipRTDS(rtdsSubsystems)
 
-    InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, stackOptions, cvAttributesFile, timerResolution)
+    InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, cvAttributesFile, timerResolution)
 
     wrappers = FindWrappers()
     InvokeOcarina(i_aadlFile, depl_aadlFile, md5s, md5hashesFilename, wrappers)
