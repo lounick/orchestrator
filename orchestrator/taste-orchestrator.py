@@ -589,16 +589,16 @@ def BuildMicroPythonSystems(micropythonSubsystems, CDirectories, cflagsSoFar):
             mpy_data = f.read()
         with open("%s.mpy.c" % baseDir, "wt") as f:
             f.write("const unsigned int mpy_script_len = %u;\n" % len(mpy_data))
-            f.write("const unsigned char mpy_script_data[%u] = \""  % len(mpy_data))
+            f.write("const unsigned char mpy_script_data[%u] = \"" % len(mpy_data))
             f.write("".join("\\x%02x" % ord(x) for x in mpy_data))
             f.write("\";\n")
         with open("%s.mpy.h" % baseDir, "wt") as f:
             f.write("extern const unsigned int mpy_script_len;\n")
-            f.write("extern const unsigned char mpy_script_data[%u];\n"  % len(mpy_data))
+            f.write("extern const unsigned char mpy_script_data[%u];\n" % len(mpy_data))
 
         # copy the MicroPython source
         mysystem("for file in %s/py/*.c; do cp $file ./py_$(basename $file); done" % (mpySource,))
-        mkdirIfMissing("py");
+        mkdirIfMissing("py")
         mysystem("for file in %s/py/*.h; do cp $file ./py/; done" % (mpySource,))
 
         # copy the bindings for this subsystem
@@ -622,9 +622,10 @@ def BuildMicroPythonSystems(micropythonSubsystems, CDirectories, cflagsSoFar):
 
         os.chdir("../..")
 
-        CommonBuildingPart(baseDir, "MicroPython", CDirectories, cflagsSoFar + " -std=c99 -Wno-switch -Wno-override-init -Wno-jump-misses-init",
-            buildCmd=lambda baseDir, cf:
-        mysystem("\"$GNATGCC\" -c %s -Wno-switch-enum -I ../../GlueAndBuild/glue%s/ -I ../../auto-src/ *.c" % (cf, baseDir)))
+        CommonBuildingPart(baseDir, "MicroPython", CDirectories,
+                           cflagsSoFar + " -std=c99 -Wno-switch -Wno-override-init -Wno-jump-misses-init",
+                           buildCmd=lambda baseDir, cf:
+                                    mysystem("\"$GNATGCC\" -c %s -Wno-switch-enum -I ../../GlueAndBuild/glue%s/ -I ../../auto-src/ *.c" % (cf, baseDir)))
 
 
 def BuildCsystems(cSubsystems, CDirectories, cflagsSoFar):
@@ -765,7 +766,6 @@ def BuildGUIs(guiSubsystems, cflagsSoFar, asn1Grammar):
     '''Builds automatically generated wxWdigets GUIs'''
     if guiSubsystems:
         g_stageLog.info("Building automatically created GUIs")
-    commentedGUIfilters = []
     for baseDir in guiSubsystems:
         if not os.path.isdir(baseDir):
             panic("No directory %s! (pwd=%s)" % (baseDir, os.getcwd()))
@@ -811,7 +811,6 @@ def BuildGUIs(guiSubsystems, cflagsSoFar, asn1Grammar):
             os.chdir("../..")
             continue
         os.chdir("../..")
-    return commentedGUIfilters
 
 
 def BuildPythonStubs(pythonSubsystems, asn1Grammar, acnFile):
@@ -1219,7 +1218,7 @@ def InvokeOcarinaMakefiles(
     return AdaIncludePath
 
 
-def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, vhdlSubsystems, tmpDirName, commentedGUIfilters, bDebug, i_aadlFile):
+def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, vhdlSubsystems, tmpDirName, bDebug, i_aadlFile):
     '''Gathers all binaries generated (Ocarina,GUIs,Python,PeekPoke,etc) and moves them under .../binaries'''
     g_stageLog.info("Gathering all executable output")
     outputDir = g_absOutputDir
@@ -1295,12 +1294,6 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, vhdlSubsystems
         print "        " + ColorFormatter.bold_string(line.strip())
 
     mysystem("rm -rf \"%s\"" % tmpDirName)
-    l = len(commentedGUIfilters)
-    if l:
-        g_stageLog.info("In the list above, the filter" + ("s: '" if l>1 else ": '") + "','".join(commentedGUIfilters) +
-                        "' match" + ("es" if 1==l else "") + " only 5 of the available fields.\n"+
-                        "Edit and uncomment the lines for any additional fields you need to plot.")
-
     if len(os.popen("find '%s/GlueAndBuild/' -type f -name guilayout.ui" % outputDir).readlines()):
         g_stageLog.info("Gathering new Python-based GUIs")
 
@@ -1955,7 +1948,6 @@ def InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, cvAttribute
             '"' + cvAttributesFile + '" --show false')
 
 
-
 def AdaSpecialHandling(AdaIncludePath, adaSubsystems):
     '''Adds the backdoor APIs requested by TERMA, and fixes ADA_INCLUDE_PATH'''
     # Prepare Ada subsystems for ADA_INCLUDE_PATH based compilation (gnatmake -x)
@@ -2067,7 +2059,7 @@ def ParsePartitionInformation():
                 # Because an env var setting can be like this one:
                 #    FOOBAR="BAR=1 BAZ=2"
                 key = envVarAssignment[:idx]
-                value =  envVarAssignment[idx+1:]
+                value = envVarAssignment[idx + 1:]
                 print(key, '==>', value)
                 os.putenv(key, value)
                 os.environ[key] = value
@@ -2582,7 +2574,7 @@ def main():
     BuildRTDSsystems(rtdsSubsystems, CDirectories, cflagsSoFar)
     BuildVHDLsystems_C_code(vhdlSubsystems, CDirectories, cflagsSoFar)
 
-    commentedGUIfilters = BuildGUIs(guiSubsystems, cflagsSoFar, asn1Grammar)
+    BuildGUIs(guiSubsystems, cflagsSoFar, asn1Grammar)
 
     BuildPythonStubs(pythonSubsystems, asn1Grammar, acnFile)
 
@@ -2608,8 +2600,9 @@ def main():
         cflagsSoFar, CDirectories, AdaDirectories, AdaIncludePath, ExtraLibraries,
         bDebug, bUseEmptyInitializers, bCoverage, bProfiling)
 
-    GatherAllExecutableOutput(outputDir, pythonSubsystems, vhdlSubsystems, tmpDirName, commentedGUIfilters, bDebug, i_aadlFile)
+    GatherAllExecutableOutput(outputDir, pythonSubsystems, vhdlSubsystems, tmpDirName, bDebug, i_aadlFile)
     CopyDatabaseFolderIfExisting()
+
 
 if __name__ == "__main__":
     main()
