@@ -1919,16 +1919,16 @@ def InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, cvAttribute
     dv = "D_view_aadlv2.aadl"
     dbgOption = " -g " if bDebug else ""
     shutil.copy(depl_aadlFile, ".")
-    mysystem("cp $(ocarina-config --resources)/AADLv2/ocarina_components.aadl .")
+    # mysystem("cp $(ocarina-config --resources)/AADLv2/ocarina_components.aadl .")
     mysystem('cleanupDV.pl "%s" > a_temp_name && mv a_temp_name "%s"' % (os.path.basename(depl_aadlFile), os.path.basename(depl_aadlFile)))
     converterFlag = ""
     if not any('Taste::version' in x for x in open(depl_aadlFile).readlines()):
         converterFlag = " --future "
     timerOption = " -x " + timerResolution + " "
     if g_bPolyORB_HI_C:
-        mysystem('"buildsupport" ' + timerOption + converterFlag + dbgOption + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" ocarina_components.aadl ' + " -d " + dv + " --polyorb-hi-c --smp2 " + ellidissLibs)
+        mysystem('"buildsupport" ' + timerOption + converterFlag + dbgOption + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" $(ocarina-config --resources)/AADLv2/ocarina_components.aadl ' + " -d " + dv + " --polyorb-hi-c --smp2 " + ellidissLibs)
     else:
-        mysystem('"buildsupport" ' + timerOption + converterFlag + dbgOption + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" ocarina_components.aadl ' + " -d " + dv + " --smp2 " + ellidissLibs)
+        mysystem('"buildsupport" ' + timerOption + converterFlag + dbgOption + caseHandling + ' --gw --glue -i "' + i_aadlFile + '" ' + ' -c "' + os.path.basename(depl_aadlFile) + '" $(ocarina-config --resources)/AADLv2/ocarina_components.aadl ' + " -d " + dv + " --smp2 " + ellidissLibs)
     if cvAttributesFile.endswith("ConcurrencyView.pro"):
         # Legacy support of v1.3
         processList = glob.glob("ConcurrencyView/*_Thread.aadl")
