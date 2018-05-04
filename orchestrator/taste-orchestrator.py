@@ -1919,7 +1919,6 @@ def InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, cvAttribute
     dv = "D_view_aadlv2.aadl"
     dbgOption = " -g " if bDebug else ""
     shutil.copy(depl_aadlFile, ".")
-    # mysystem("cp $(ocarina-config --resources)/AADLv2/ocarina_components.aadl .")
     mysystem('cleanupDV.pl "%s" > a_temp_name && mv a_temp_name "%s"' % (os.path.basename(depl_aadlFile), os.path.basename(depl_aadlFile)))
     converterFlag = ""
     if not any('Taste::version' in x for x in open(depl_aadlFile).readlines()):
@@ -2363,7 +2362,7 @@ end ASSERT_System.Impl;
             sys.stdout.flush()
             break
 
-    mysystem("cp $(ocarina-config --resources)/AADLv2/ocarina_components.aadl .")
+#    mysystem("cp $(ocarina-config --resources)/AADLv2/ocarina_components.aadl .")
     mysystem('cleanupDV.pl "%s" > a_temp_name && mv a_temp_name "%s"' % (os.path.basename(depl_aadlFile), os.path.basename(depl_aadlFile)))
     if invokeOcarina:
         # banner("Invoking ocarina")
