@@ -22,6 +22,7 @@ import time
 import glob
 import logging
 import multiprocessing
+import xml.sax.saxutils
 
 # File handle where build log (log.txt) is
 g_log = None
@@ -504,7 +505,7 @@ def CheckDirectives(baseDir):
                 while True:
                     findCO = re.match(pattern, data)
                     if findCO:
-                        opt = findCO.group(1)
+                        opt = xml.sax.saxutils.unescape(findCO.group(1))
                         data = findCO.group(2)
                         partition = g_fromFunctionToPartition[baseDir]
                         target.setdefault(partition, []).append(opt)
