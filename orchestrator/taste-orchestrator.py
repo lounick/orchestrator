@@ -2031,6 +2031,11 @@ def ParsePartitionInformation():
                 g_distributionNodesPlatform[partitionName] = [data[2], prefix]
                 return prefix
 
+            if 'RTEMS' in data[2]:
+                # As of now (2018/06), POHIAda doesn't work properly with RTEMS5.1 or RCC.
+                if not g_bPolyORB_HI_C:
+                    panic("Currently, POHIAda doesn't work well with RTEMS5.1 or RCC.\nPlease pass the '-p' option to the orchestrator, to use POHIC instead,\n")
+
             if 'RTEMS' not in data[2]:
                 # Learn the compiler and linker flags, by calling out into
                 # a temporary Makefile that includes the Ocarina-generated one
