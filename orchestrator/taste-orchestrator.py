@@ -395,6 +395,10 @@ def SetEnvForRTEMS(platformType):
         elif platformType.startswith("PLATFORM_GUMSTIX_RTEMS"):
             src = "RTEMS_MAKEFILE_PATH_GUMSTIX"
             os.putenv("RTEMS_MAKEFILE_PATH", os.environ[src])
+        RMP = os.getenv("RTEMS_MAKEFILE_PATH")
+        RCCPATH = os.sep.join(RMP.split(os.sep)[:-2] + ["bin"])
+        if RCCPATH not in os.getenv("PATH"):
+            os.putenv("PATH", RCCPATH + ":" + os.getenv("PATH"))
     except KeyError:
         panic("You must configure %s in your environment" % src)
 
