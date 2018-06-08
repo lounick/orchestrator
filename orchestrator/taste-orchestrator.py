@@ -383,6 +383,7 @@ def CalculateUserCodeOnlyCFLAGS(node):
 
 def SetEnvForRTEMS(platformType):
     try:
+        src = None
         if platformType.startswith("PLATFORM_X86_RTEMS"):
             src = "RTEMS_MAKEFILE_PATH_X86"
             os.putenv("RTEMS_MAKEFILE_PATH", os.environ[src])
@@ -395,8 +396,8 @@ def SetEnvForRTEMS(platformType):
         elif platformType.startswith("PLATFORM_GUMSTIX_RTEMS"):
             src = "RTEMS_MAKEFILE_PATH_GUMSTIX"
             os.putenv("RTEMS_MAKEFILE_PATH", os.environ[src])
-        if 'RTEMS' in platformType:
-            RMP = os.getenv("RTEMS_MAKEFILE_PATH")
+        if src is not None:
+            RMP = os.environ[src]
             RCCPATH = os.sep.join(RMP.split(os.sep)[:-2] + ["bin"])
             if RCCPATH not in os.getenv("PATH"):
                 os.putenv("PATH", RCCPATH + ":" + os.getenv("PATH"))
