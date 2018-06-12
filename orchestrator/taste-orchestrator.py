@@ -1012,6 +1012,7 @@ def InvokeOcarinaMakefiles(
             asn1target = "auto-src_" + g_distributionNodesPlatform[node][0]
             asn1target = os.path.abspath(asn1target)
             poHiAdaLinkCmd = ""
+            poHiAdaLinkLibs = ""
             # in case of rebuilds
             mysystem("rm -rf \"%s\" 2>/dev/null ; exit 0" % asn1target)
             if not os.path.exists(asn1target):
@@ -1052,6 +1053,12 @@ def InvokeOcarinaMakefiles(
                 if poHiAdaLinkCmd == "":
                     panic("There was no line containing 'adalib' inside 'ada-start.adb'")
                 poHiAdaLinkCmd += " -lgnat -lgnarl"
+
+                # Patch from Jerome, after latest updates in POHI:
+                # RTEMS builds expect user-provided libraries to be provided through the LD_LIBS macro,
+                # other PolyORB-HI/C can use directly USER_LDFLAGS
+                poHiAdaLinkLibs += " LD_LIBS=\"-lgnat -lgnarl\" "
+
                 os.chdir("..")
 
             externals += asn1target + '/*.o '
@@ -1221,7 +1228,7 @@ def InvokeOcarinaMakefiles(
                 userCFlags = userCFlags.replace("-fshort-double", "")  # Not supported when compiling Ada
                 userLDFlags = userLDFlags.replace("-fshort-double", "")  # Not supported when compiling Ada
             customFlags = (' USER_CFLAGS="${USER_CFLAGS}%s" USER_LDFLAGS="${USER_LDFLAGS}%s"' % (userCFlags, userLDFlags))
-            mysystem((cmd % customFlags) + extra + externals + "\" make")
+            mysystem((cmd % customFlags) + extra + externals + "\"" + poHiAdaLinkLibs + " make")
     return AdaIncludePath
 
 
