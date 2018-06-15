@@ -1282,6 +1282,9 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, vhdlSubsystems
             mysystem('mv "%s.pl" "GnuPlot_%s"/  >/dev/null 2>&1 ; exit 0' % (base, base))
     os.chdir(olddir)
 
+    # Jerome's "DLL" section
+    mysystem("find '%s'/GlueAndBuild/deployment* -type f -perm /111 -iname '*.so' | while read ANS ; do file \"$ANS\" | egrep 'ELF|PE32' >/dev/null 2>/dev/null && mv \"$ANS\" \"%s/binaries/\" ; done ; exit 0" % (g_absOutputDir, g_absOutputDir))
+
     # Peek and Poke section preparation
     mkdirIfMissing(outputDir + os.sep + "/binaries/PeekPoke")
     os.chdir(outputDir + os.sep + "/binaries/PeekPoke")
@@ -1303,7 +1306,8 @@ def GatherAllExecutableOutput(unused_outputDir, pythonSubsystems, vhdlSubsystems
     for line in os.popen(
             "find '%s'/binaries -type f -perm /111 | grep -v /PeekPoke/ ; exit 0" % (g_absOutputDir)).readlines():
         line = line.strip()
-        if line.endswith('.so') or '/GUI-' in line:
+        if any(x in line
+               for x in ['/GUI-', 'PythonAccess.so', 'dataview-uniq_getset.so']):
             continue
         print "        " + ColorFormatter.bold_string(line.strip())
 
