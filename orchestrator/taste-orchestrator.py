@@ -512,6 +512,9 @@ def CheckDirectives(baseDir):
                     findCO = re.match(pattern, data)
                     if findCO:
                         opt = xml.sax.saxutils.unescape(findCO.group(1))
+                        # TODO (Niko): This was in the installed version but not in the source
+                        # Check if all is good
+                        opt = opt.replace("&eq;", "=")
                         data = findCO.group(2)
                         partition = g_fromFunctionToPartition[baseDir]
                         target.setdefault(partition, []).append(opt)
@@ -820,6 +823,50 @@ def BuildGUIs(guiSubsystems, cflagsSoFar, asn1Grammar):
         os.chdir("../..")
 
 
+def BuildRosBridges(rosBridgeSubsystems, cflagsSoFar, asn1Grammar, acnFile):
+    '''Builds automatically generated ROS bridges'''
+    if rosBridgeSubsystems:
+        g_stageLog.info("Building automatically created ROS bridges")
+    for baseDir in rosBridgeSubsystems:
+        if not os.path.isdir(baseDir):
+            panic("No directory %s! (pwd=%s)" % (baseDir, os.getcwd()))
+        # This is for GUI code
+        if not os.path.exists(baseDir + os.sep + baseDir + "_rosbridge_code.c"):
+            panic("ROS bridge generated code did not contain a %s ..." % (baseDir + os.sep + baseDir + "_rosbridge_code.c"))
+        os.chdir(baseDir)
+        mkdirIfMissing("ext")
+        mysystem('for i in * ; do if [ -f "$i" -a ! -e ext/"$i" ] ; then ln -s ../"$i" ext/ ; fi ; done')
+        os.chdir("ext")
+        partitionNameWithoutSuffix = g_fromFunctionToPartition.get(baseDir, None)
+        if partitionNameWithoutSuffix:
+            for k, v in g_distributionNodesPlatform.iteritems():
+                if k.startswith(partitionNameWithoutSuffix):
+                    platform = v[0]
+                    break
+            else:
+                platform = None
+
+            if not os.path.isdir(os.sep.join(os.getenv("DMT"), "ros", platform)):
+                panic("Windows is not supported, yet.")
+        
+        mysystem("cp \"$DMT\"/ros/" + platform + "/* .")
+        mysystem("cp -r \"$DMT\"/ros/ros/ .")
+        mysystem("cp ../*polyorb_interface.? . 2>/dev/null || exit 0")
+        mysystem("cp ../Context-*.? . 2>/dev/null || exit 0")
+        mysystem("rm -f ../*-uniq.? *-uniq.? 2>/dev/null || exit 0")
+        mkdirIfMissing("asn2dataModel")
+        mysystem("asn2dataModel -o asn2dataModel -toROS " + os.path.basename(asn1Grammar))
+        os.chdir("asn2dataModel")
+        mysystem("cp \"%s\" ." % acnFile)
+        os.chdir("..")
+        mysystem("cp -r asn2dataModel/* .")
+        if (baseDir in g_distributionNodesPlatform.keys()):
+            UpdateEnvForNode(baseDir)
+        mysystem("\"$GNATGCC\" -c %s -I ../../GlueAndBuild/glue%s/ -I ../../auto-src/ -I ros/include *.{c,cpp} ros/src/*.{c,cpp}" %
+                 (cflagsSoFar + CalculateCFLAGS(baseDir) + CalculateUserCodeOnlyCFLAGS(baseDir), baseDir))
+        os.chdir("../..")
+
+
 def BuildPythonStubs(pythonSubsystems, asn1Grammar, acnFile):
     '''Builds automatically generated Python stubs'''
     if pythonSubsystems:
@@ -889,12 +936,12 @@ def BuildCyclicSubsystems(cyclicSubsystems, cflagsSoFar):
         os.chdir("..")
 
 
-def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems):
+def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems, rosBridgeSubsystems):
     '''Identifies and renames identical symbols in separate subsystems'''
     g_stageLog.info("Renaming commonly named symbols")
 
     def getTarget(baseDir):
-        if baseDir in ogSubsystems or baseDir in guiSubsystems:
+        if baseDir in ogSubsystems or baseDir in guiSubsystems or baseDir in rosBridgeSubsystems:
             return "/ext/"
         elif baseDir in cyclicSubsystems or baseDir in vhdlSubsystems:
             return os.sep
@@ -904,7 +951,7 @@ def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, micropythonS
     prefixes = {}
     for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + micropythonSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + \
             adaSubsystems.keys() + rtdsSubsystems.keys() + ogSubsystems.keys() + \
-            guiSubsystems + cyclicSubsystems + vhdlSubsystems.keys():
+            guiSubsystems + cyclicSubsystems + vhdlSubsystems.keys() + rosBridgeSubsystems:
         if baseDir not in g_distributionNodesPlatform:
             panic("%s did not exist in the 'nodes' file" % baseDir)
         systemPlatform, pref = g_distributionNodesPlatform[baseDir]
@@ -918,7 +965,7 @@ def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, micropythonS
         cmd = "patchAPLCs.py "
         for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + micropythonSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + \
                 adaSubsystems.keys() + rtdsSubsystems.keys() + ogSubsystems.keys() + \
-                guiSubsystems + cyclicSubsystems + vhdlSubsystems.keys():
+                guiSubsystems + cyclicSubsystems + vhdlSubsystems.keys() + rosBridgeSubsystems:
             _, pref = g_distributionNodesPlatform[baseDir]
             if pref != prefix:
                 continue
@@ -940,7 +987,7 @@ def RenameCommonlyNamedSymbols(scadeSubsystems, simulinkSubsystems, micropythonS
 
 
 def InvokeOcarinaMakefiles(
-    scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems,
+    scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems, rosBridgeSubsystems,
         cflagsSoFar, CDirectories, AdaDirectories, AdaIncludePath, ExtraLibraries,
         bDebug, bUseEmptyInitializers, bCoverage, bProfiling):
 
@@ -1086,6 +1133,11 @@ def InvokeOcarinaMakefiles(
                         baseDir = os.path.splitext(base)[0]
                         externals += g_absOutputDir + os.sep + baseDir + os.sep + "ext" + os.sep + '*.o '
                 for ss in guiSubsystems:
+                    if ss == aplc:
+                        base = os.path.basename(ss)
+                        baseDir = os.path.splitext(base)[0]
+                        externals += g_absOutputDir + os.sep + baseDir + os.sep + "ext" + os.sep + '*.o '
+                for ss in rosBridgeSubsystems:
                     if ss == aplc:
                         base = os.path.basename(ss)
                         baseDir = os.path.splitext(base)[0]
@@ -2128,6 +2180,24 @@ def DetectGUIsubSystems(AdaIncludePath):
     return guiSubsystems, AdaIncludePath
 
 
+def DetectROSBridgesubSystems(AdaIncludePath):
+    '''Detects the ROSBridge systems that will be built'''
+    g_stageLog.info("Detecting ROSBridge subSystems")
+    rosBridgeSubsystems = []
+    for line in os.popen("/bin/ls */*rosbridge_code.c 2>/dev/null", 'r').readlines():
+        line = line.strip()
+        baseDir = re.sub(r'/.*', '', line)
+        if not os.path.exists(baseDir + os.sep + "mini_cv.aadl"):
+            panic("'%s' appears to contain a ROSBridge, but no 'mini_cv.aadl' is inside..." % baseDir)
+        rosBridgeSubsystems.append(baseDir)
+        if AdaIncludePath is not None:
+            AdaIncludePath += ":" + os.path.abspath(baseDir)
+        else:
+            AdaIncludePath = os.path.abspath(baseDir)
+        os.putenv("ADA_INCLUDE_PATH", AdaIncludePath)
+    return rosBridgeSubsystems, AdaIncludePath
+
+
 def DetectCyclicSubsystems():
     '''Detects the Cyclic systems that will be built'''
     g_stageLog.info("Detecting Cyclic subsystems")
@@ -2166,8 +2236,8 @@ def InvokeObjectGeodeGenerator(ogSubsystems):
 
 def CreateAndCompileGlue(
     asn1Grammar, cflagsSoFar,
-        scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, adaIncludes, rtdsIncludes, guiIncludes, cyclicIncludes,
-        scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems,
+        scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, adaIncludes, rtdsIncludes, guiIncludes, cyclicIncludes, rosBridgeIncludes,
+        scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems, rosBridgeSubsystems,
         md5s, md5hashesFilename,
         majorSimulinkVersion, bUseSimulinkMakefiles):
 
@@ -2197,6 +2267,7 @@ def CreateAndCompileGlue(
         else:
             vhdlIncludes = " "
         if absDview not in md5s or md5s[absDview] != md5hash(absDview) or absMinicv not in md5s or md5s[absMinicv] != md5hash(absMinicv):
+            # TODO (Niko): Check if the correct B mapper is invoked. We should just need a C B mapper
             mysystem("aadl2glueC -o \"glue" + baseDir + "\" ../D_view.aadl \"../" + baseDir + "/mini_cv.aadl\"")
 
             if 0 == len([x for x in os.listdir("glue" + baseDir) if x.endswith(".c") or x.endswith(".h")]):
@@ -2216,15 +2287,15 @@ def CreateAndCompileGlue(
                 # Patch calls to _step functions, sometimes they have 0 param, sometimes they don't
                 # so look at the header files...
                 mysystem('LINES=`grep "_step.*int_T.*tid" ../../"%s"/"%s"/*h  2>/dev/null | wc -l` ; if [ $LINES -eq 1 ] ; then for i in *.c ; do cat "$i" | sed "s,_step(),_step(0)," > a_temp_name && mv a_temp_name "$i" ; done ; fi ; exit 0' % (baseDir, baseDir))
-                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s %s *.c" % (
+                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s %s %s *.c" % (
                     cflagsSoFar + CalculateCFLAGS(baseDir, withPOHIC=False) + CalculateUserCodeOnlyCFLAGS(baseDir),
                     bUseSimulinkMakefiles[baseDir][2],
-                    scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes))
+                    scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes, rosBridgeIncludes))
             else:
-                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s %s *.c" % (
+                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s %s %s *.c" % (
                     cflagsSoFar + CalculateCFLAGS(baseDir, withPOHIC=False) + CalculateUserCodeOnlyCFLAGS(baseDir),
                     scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes,
-                    vhdlIncludes))
+                    vhdlIncludes, rosBridgeIncludes))
             os.chdir("..")
 
             lock.acquire()
@@ -2245,15 +2316,15 @@ def CreateAndCompileGlue(
                 os.chdir("../../" + baseDir + os.sep + baseDir)
                 CheckDirectives(baseDir)
                 os.chdir(curDir)
-                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s %s *.c" % (
+                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s %s %s *.c" % (
                     cflagsSoFar + CalculateCFLAGS(baseDir, withPOHIC=False) + CalculateUserCodeOnlyCFLAGS(baseDir),
                     bUseSimulinkMakefiles[baseDir][2],
-                    scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes))
+                    scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes, rosBridgeIncludes))
             else:
-                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s %s *.c" % (
+                mysystem("\"$GNATGCC\" -c %s -I ../../auto-src %s %s %s %s %s %s %s %s %s %s *.c" % (
                     cflagsSoFar + CalculateCFLAGS(baseDir, withPOHIC=False) + CalculateUserCodeOnlyCFLAGS(baseDir),
                     scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, guiIncludes, adaIncludes, cyclicIncludes, rtdsIncludes,
-                    vhdlIncludes))
+                    vhdlIncludes, rosBridgeIncludes))
             os.chdir("..")
 
     lock = multiprocessing.Lock()
@@ -2266,7 +2337,7 @@ def CreateAndCompileGlue(
     runningInstances = 0
     totalCPUs = DetermineNumberOfCPUs()
     allSuccessful = True
-    for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + micropythonSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + adaSubsystems.keys() + ogSubsystems.keys() + rtdsSubsystems.keys() + guiSubsystems + cyclicSubsystems + vhdlSubsystems.keys():
+    for baseDir in scadeSubsystems.keys() + simulinkSubsystems.keys() + micropythonSubsystems.keys() + cSubsystems.keys() + cppSubsystems.keys() + adaSubsystems.keys() + ogSubsystems.keys() + rtdsSubsystems.keys() + guiSubsystems + cyclicSubsystems + vhdlSubsystems.keys() + rosBridgeSubsystems:
         if runningInstances >= totalCPUs:
             allAreStillAlive = True
             while allAreStillAlive:
@@ -2413,7 +2484,7 @@ def DetectPythonSubsystems():
 
 def CreateIncludePaths(
         scadeSubsystems, simulinkSubsystems, micropythonSubsystems, qgencSubsystems, cSubsystems, cppSubsystems, qgenadaSubsystems,
-        adaSubsystems, rtdsSubsystems, guiSubsystems, cyclicSubsystems, AdaIncludePath):
+        adaSubsystems, rtdsSubsystems, guiSubsystems, cyclicSubsystems, rosBridgeSubsystems, AdaIncludePath):
     '''Creates the include flags (-I ...) for all subsystems'''
     g_stageLog.info("Creating include paths directive")
 
@@ -2471,8 +2542,14 @@ def CreateIncludePaths(
     for baseDir in cyclicSubsystems:
         if os.path.isdir(baseDir + os.sep + baseDir):
             cyclicIncludes += ' -I "../../' + baseDir + os.sep + '"'
+
+    rosBridgeSubsystems = ""
+    for baseDir in guiSubsystems:
+        if os.path.isdir(baseDir + os.sep + baseDir):
+            guiIncludes += ' -I "../../' + baseDir + os.sep + baseDir + os.sep + '"'
+
     return (scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes,
-            rtdsIncludes, guiIncludes, adaIncludes, cyclicIncludes, AdaIncludePath)
+            rtdsIncludes, guiIncludes, adaIncludes, cyclicIncludes, rosBridgeSubsystems, AdaIncludePath)
 
 
 def CheckIfInterfaceViewNeedsUpgrading(i_aadlFile):
@@ -2557,7 +2634,8 @@ def main():
     AdaIncludePath = UnzipAdaCode(adaSubsystems, AdaIncludePath)
     uniqueSetOfAdaPackages = DetectAdaPackages(adaSubsystems, asn1Grammar)
     UnzipRTDS(rtdsSubsystems)
-
+    # TODO (Niko): Check how buildsupport is invoked
+    # TODO: We need to update also concurency_view.c
     InvokeBuildSupport(i_aadlFile, depl_aadlFile, bKeepCase, bDebug, cvAttributesFile, timerResolution)
 
     wrappers = FindWrappers()
@@ -2567,20 +2645,20 @@ def main():
     ParsePartitionInformation()
     cflagsSoFar += " " + os.getenv('CFLAGS', default="") + " "
     guiSubsystems, AdaIncludePath = DetectGUIsubSystems(AdaIncludePath)
+    rosBridgeSubsystems, AdaIncludePath = DetectROSBridgesubSystems(AdaIncludePath)
     cyclicSubsystems = DetectCyclicSubsystems()
 
     InvokeObjectGeodeGenerator(ogSubsystems)
-
-    scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, rtdsIncludes, guiIncludes, adaIncludes, cyclicIncludes, AdaIncludePath = \
+    scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, rtdsIncludes, guiIncludes, adaIncludes, cyclicIncludes, rosBridgeIncludes, AdaIncludePath = \
         CreateIncludePaths(
             scadeSubsystems, simulinkSubsystems, micropythonSubsystems, qgencSubsystems, cSubsystems, cppSubsystems, qgenadaSubsystems,
-            adaSubsystems, rtdsSubsystems, guiSubsystems, cyclicSubsystems, AdaIncludePath)
+            adaSubsystems, rtdsSubsystems, guiSubsystems, cyclicSubsystems, rosBridgeSubsystems, AdaIncludePath)
 
     CreateAndCompileGlue(
         asn1Grammar,
         cflagsSoFar,
-        scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, adaIncludes, rtdsIncludes, guiIncludes, cyclicIncludes,
-        scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems,
+        scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes, adaIncludes, rtdsIncludes, guiIncludes, cyclicIncludes, rosBridgeIncludes,
+        scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems, rosBridgeSubsystems,
         md5s, md5hashesFilename,
         majorSimulinkVersion, bUseSimulinkMakefiles)
 
@@ -2597,7 +2675,7 @@ def main():
     BuildVHDLsystems_C_code(vhdlSubsystems, CDirectories, cflagsSoFar)
 
     BuildGUIs(guiSubsystems, cflagsSoFar, asn1Grammar)
-
+    BuildRosBridges(rosBridgeSubsystems, cflagsSoFar, asn1Grammar, acnFile)
     BuildPythonStubs(pythonSubsystems, asn1Grammar, acnFile)
 
     shutil.rmtree(tmpDirName)
@@ -2615,13 +2693,14 @@ def main():
         ogSubsystems,
         guiSubsystems,
         cyclicSubsystems,
-        vhdlSubsystems)
-
+        vhdlSubsystems,
+        rosBridgeSubsystems)
+    # TODO (Niko): Also here 
     AdaIncludePath = InvokeOcarinaMakefiles(
-        scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems,
+        scadeSubsystems, simulinkSubsystems, micropythonSubsystems, cSubsystems, cppSubsystems, adaSubsystems, rtdsSubsystems, ogSubsystems, guiSubsystems, cyclicSubsystems, vhdlSubsystems, rosBridgeSubsystems,
         cflagsSoFar, CDirectories, AdaDirectories, AdaIncludePath, ExtraLibraries,
         bDebug, bUseEmptyInitializers, bCoverage, bProfiling)
-
+    #TODO (Niko): Check if we are in these paths
     GatherAllExecutableOutput(outputDir, pythonSubsystems, vhdlSubsystems, tmpDirName, bDebug, i_aadlFile)
     CopyDatabaseFolderIfExisting()
 
