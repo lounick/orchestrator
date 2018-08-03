@@ -828,11 +828,12 @@ def BuildRosBridges(rosBridgeSubsystems, cflagsSoFar, asn1Grammar, acnFile):
     if rosBridgeSubsystems:
         g_stageLog.info("Building automatically created ROS bridges")
     for baseDir in rosBridgeSubsystems:
+        olddir = os.getcwd()
         if not os.path.isdir(baseDir):
             panic("No directory %s! (pwd=%s)" % (baseDir, os.getcwd()))
         # This is for GUI code
-        if not os.path.exists(baseDir + os.sep + baseDir + "_rosbridge_code.c"):
-            panic("ROS bridge generated code did not contain a %s ..." % (baseDir + os.sep + baseDir + "_rosbridge_code.c"))
+        if not os.path.exists(baseDir + os.sep + baseDir + "_ros_bridge_code.cpp"):
+            panic("ROS bridge generated code did not contain a %s ..." % (baseDir + os.sep + baseDir + "_ros_bridge_code.cpp"))
         os.chdir(baseDir)
         mkdirIfMissing("ext")
         mysystem('for i in * ; do if [ -f "$i" -a ! -e ext/"$i" ] ; then ln -s ../"$i" ext/ ; fi ; done')
@@ -845,16 +846,17 @@ def BuildRosBridges(rosBridgeSubsystems, cflagsSoFar, asn1Grammar, acnFile):
                     break
             else:
                 platform = None
-
-            if not os.path.isdir(os.sep.join(os.getenv("DMT"), "ros", platform)):
-                panic("Windows is not supported, yet.")
+            ROSpath = getSingleLineFromCmdOutput("taste-config --prefix") + os.sep + "share"
         
-        mysystem("cp \"$DMT\"/ros/" + platform + "/* .")
-        mysystem("cp -r \"$DMT\"/ros/ros/ .")
+        mysystem("cp -r " + ROSpath + "/ros/ .")
+        #mysystem("cp -r \"$DMT\"/ros/ros/ .")
         mysystem("cp ../*polyorb_interface.? . 2>/dev/null || exit 0")
         mysystem("cp ../Context-*.? . 2>/dev/null || exit 0")
         mysystem("rm -f ../*-uniq.? *-uniq.? 2>/dev/null || exit 0")
         mkdirIfMissing("asn2dataModel")
+        #mysystem("cp \"%s\"/%s/%s_enums_def.h ." % (g_absOutputDir, FVname, FVname))
+        mysystem("cp \"%s\" ." % asn1Grammar)
+        mysystem("cp \"%s\" ." % acnFile)
         mysystem("asn2dataModel -o asn2dataModel -toROS " + os.path.basename(asn1Grammar))
         os.chdir("asn2dataModel")
         mysystem("cp \"%s\" ." % acnFile)
@@ -862,7 +864,9 @@ def BuildRosBridges(rosBridgeSubsystems, cflagsSoFar, asn1Grammar, acnFile):
         mysystem("cp -r asn2dataModel/* .")
         if (baseDir in g_distributionNodesPlatform.keys()):
             UpdateEnvForNode(baseDir)
-        mysystem("\"$GNATGCC\" -c %s -I ../../GlueAndBuild/glue%s/ -I ../../auto-src/ -I ros/include *.{c,cpp} ros/src/*.{c,cpp}" %
+        mysystem("\"$GNATGXX\" -c %s -I ../../GlueAndBuild/glue%s/ -I ../../auto-src/ -I ros/include -I ros -I ros/rosserial_msgs -I ros/std_msgs ros/src/*.cpp *.cpp" %
+                 (cflagsSoFar + CalculateCFLAGS(baseDir) + CalculateUserCodeOnlyCFLAGS(baseDir), baseDir))
+        mysystem("\"$GNATGCC\" -c %s -I ../../GlueAndBuild/glue%s/ -I ../../auto-src/ -I ros/include -I ros -I ros/rosserial_msgs -I ros/std_msgs *.c " %
                  (cflagsSoFar + CalculateCFLAGS(baseDir) + CalculateUserCodeOnlyCFLAGS(baseDir), baseDir))
         os.chdir("../..")
 
@@ -1257,7 +1261,7 @@ def InvokeOcarinaMakefiles(
             if userLDFlags != "":
                 userLDFlags = ' ' + userLDFlags
 
-            if len(cppSubsystems)>0:
+            if len(cppSubsystems)>0 or len(rosBridgeSubsystems)>0:
                 userLDFlags += " -lstdc++ "
 
             # Workaround for bug in the new GNAT - crashes if it sees multiple -m32
@@ -1412,7 +1416,6 @@ def FixEnvVars():
     # versions of the DMT tools
     DMTpath = getSingleLineFromCmdOutput("taste-config --prefix") + os.sep + "share"
     os.putenv("DMT", DMTpath)
-
     # ObjectGeode variables
     os.putenv("GEODE_MAPPING", "TP")
     os.putenv("GEODE_MULTI_BIN", "0")
@@ -2184,7 +2187,7 @@ def DetectROSBridgesubSystems(AdaIncludePath):
     '''Detects the ROSBridge systems that will be built'''
     g_stageLog.info("Detecting ROSBridge subSystems")
     rosBridgeSubsystems = []
-    for line in os.popen("/bin/ls */*rosbridge_code.c 2>/dev/null", 'r').readlines():
+    for line in os.popen("/bin/ls */*ros_bridge_code.cpp 2>/dev/null", 'r').readlines():
         line = line.strip()
         baseDir = re.sub(r'/.*', '', line)
         if not os.path.exists(baseDir + os.sep + "mini_cv.aadl"):
