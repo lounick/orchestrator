@@ -1139,7 +1139,6 @@ def InvokeOcarinaMakefiles(
                         base = os.path.basename(ss)
                         baseDir = os.path.splitext(base)[0]
                         externals += os.path.join(g_absOutputDir, baseDir, 'ext', '*.o ')
-                        #g_absOutputDir + os.sep + baseDir + os.sep + "ext" + os.sep + '*.o '
                 for ss in cyclicSubsystems:
                     if ss == aplc:
                         base = os.path.basename(ss)
@@ -2542,7 +2541,6 @@ def CreateIncludePaths(
     rosBridgeSubsystems = ""
     for baseDir in rosBridgeSubsystems:
         if os.path.isdir(baseDir + os.sep + baseDir):
-            #rosBridgeIncludes += ' -I "../../' + baseDir + os.sep + baseDir + os.sep + '"'
             rosBridgeIncludes += ' -I "' + os.path.join('..', '..', baseDir, baseDir) + '"'
 
     return (scadeIncludes, simulinkIncludes, micropythonIncludes, cIncludes,
