@@ -848,7 +848,7 @@ def BuildRosBridges(rosBridgeSubsystems, cflagsSoFar, asn1Grammar, acnFile):
         mkdirIfMissing("asn2dataModel")
         mysystem('cp "%s" .' % asn1Grammar)
         mysystem('cp "%s" .' % acnFile)
-        mysystem('asn2dataModel -o asn2dataModel -toROS ' + os.path.basename(asn1Grammar))
+        mysystem('asn2dataModel -o asn2dataModel -toROS_Bridge ' + os.path.basename(asn1Grammar))
         os.chdir('asn2dataModel')
         mysystem('cp "%s" .' % acnFile)
         os.chdir('..')
